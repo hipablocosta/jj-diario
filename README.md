@@ -1,6 +1,6 @@
 # Diário JJ
 
-Diário de treino de jiu jitsu pra usar no celular. Registra aula, rolas e finalizações, mostra estatísticas, sincroniza pela conta Google e tem grupo com placar entre amigos.
+Diário de treino de jiu jitsu pra usar no celular. Registra aula, rolas e finalizações, mostra estatísticas, sincroniza pela conta Google e tem grupo com ranking, placar entre amigos e feed dos últimos treinos.
 
 **No ar:** https://hipablocosta.github.io/jj-diario/
 
@@ -111,6 +111,7 @@ Plano gratuito: 50 mil leituras e 20 mil gravações por dia. Um treino = uma gr
 - **Recusar é contestar**, não "não quero no meu diário". Por isso tira do placar.
 - **Rola não confirmada conta.** Senão o placar fica vazio enquanto o amigo não abre o app.
 - **Mudar "pra estudar" reabre a pendência.** Virou outra coisa pra estudar.
+- **O feed mostra o que o treino teve, não com quem.** "Finalizou 2× (Armlock)" sim; "finalizou o Carlos" não — parceiro de fora do grupo não pediu pra aparecer.
 
 ## Backlog
 
@@ -118,4 +119,3 @@ Plano gratuito: 50 mil leituras e 20 mil gravações por dia. Um treino = uma gr
 - Autocompletar nome de parceiro que não tem app
 - Reabrir pendência de estudo marcada sem querer
 - Renomear grupo, expulsar membro, mais de um grupo por pessoa
-- Feed do grupo ("Pablo treinou hoje")

@@ -771,6 +771,41 @@ function renderPendentes() {
     <small class="dica">Confirmar coloca a rola no seu diário. Recusar tira do placar.</small>`;
 }
 
+// Feed: os últimos treinos de todo mundo do grupo.
+// Mostra o que o treino teve (rolas, finalizações, técnicas), mas não com quem —
+// parceiro de fora do grupo não pediu pra aparecer. Rola confirmada (cópia) não entra na conta.
+const FEED_MAX = 20;
+
+function renderFeed() {
+  const me = currentUser.uid;
+  const lista = [...group.sessions]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+    .slice(0, FEED_MAX);
+  if (!lista.length) return '<p class="vazio-inline">Ninguém registrou treino ainda.</p>';
+
+  return `<ul class="feed">${lista.map((s) => {
+    const m = group.members[s.uid] || {};
+    const rolas = s.rolls.filter((r) => !r.mirrorOf);
+    const wins = rolas.flatMap((r) => r.wins);
+    const losses = rolas.flatMap((r) => r.losses);
+    const linha = [
+      `${s.type === 'gi' ? 'Gi' : 'No-Gi'} · ${s.duration} min`,
+      rolas.length ? `${rolas.length} ${rolas.length === 1 ? 'rola' : 'rolas'}` : null,
+    ].filter(Boolean).join(' · ');
+    return `
+      <li>
+        <img src="${m.photo || ''}" alt="" referrerpolicy="no-referrer">
+        <div>
+          <div class="feed-head"><strong>${s.uid === me ? 'Você' : primeiroNome(m.name || '?')}</strong> <span>· ${formatDate(s.date)}</span></div>
+          <div class="feed-linha">${linha}</div>
+          ${wins.length ? `<div class="feed-linha"><span class="r-win">Finalizou ${wins.length}×:</span> ${summarize(wins)}</div>` : ''}
+          ${losses.length ? `<div class="feed-linha"><span class="r-loss">Foi finalizado ${losses.length}×:</span> ${summarize(losses)}</div>` : ''}
+          ${s.techniques.length ? `<div class="feed-linha"><span class="feed-aula">Aula:</span> ${s.techniques.join(', ')}</div>` : ''}
+        </div>
+      </li>`;
+  }).join('')}</ul>`;
+}
+
 // ===== Grupo =====
 const grupoEl = $('#grupo-conteudo');
 
@@ -894,6 +929,9 @@ function renderGrupo() {
         </div>
       </div>`).join('')
     : `<p class="vazio-inline">Nenhuma rola com membro do grupo ainda. Ao adicionar uma rola, toca no nome do parceiro pra ligar.</p>`}
+
+    <h2>Últimos treinos</h2>
+    ${renderFeed()}
 
     <button type="button" id="btn-sair-grupo" class="btn-secondary btn-sair-grupo">Sair do grupo</button>
   `;

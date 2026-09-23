@@ -308,6 +308,16 @@ button, .file-label {
 .placar-det { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
 .placar-det div { margin-top: 2px; }
 .btn-sair-grupo { margin-top: 10px; color: var(--muted); }
+.feed { list-style: none; padding: 0; margin: 0; }
+.feed li {
+  display: grid; grid-template-columns: 32px 1fr; gap: 10px; align-items: start;
+  background: var(--surface); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px;
+}
+.feed img { width: 32px; height: 32px; border-radius: 50%; background: var(--surface-2); }
+.feed-head { font-size: 14px; }
+.feed-head span { color: var(--muted); }
+.feed-linha { font-size: 13px; color: var(--muted); margin-top: 3px; }
+.feed-aula { color: var(--text); }
 .pendente { background: var(--surface); border: 1px solid var(--accent); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 10px; }
 .pendente-acoes { display: flex; gap: 8px; margin-top: 10px; }
 .pendente-acoes button { flex: 1; margin: 0; padding: 10px; font-size: 14px; }
