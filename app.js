@@ -4,9 +4,12 @@
 //   worked/stuck/study = "funcionou" / "travei em" / "pra estudar" (texto livre)
 //   studyDone = true quando a pendência de estudo foi marcada como resolvida
 //   (sessões antigas podem ter só `notes`, que continua sendo exibido)
-// Cada rola:   { partner, wins: ["Armlock", ...], losses: ["Mata-leão", ...] }
-//   wins   = finalizações que eu apliquei (uma entrada por finalização, pode repetir)
-//   losses = finalizações que eu sofri
+// Cada rola:   { rid, partner, partnerUid, wins: ["Armlock", ...], losses: ["Mata-leão", ...], mirrorOf }
+//   rid        = id da rola (pra outro membro do grupo poder confirmá-la)
+//   partnerUid = uid do parceiro, se ele é membro do grupo
+//   wins       = finalizações que eu apliquei (uma entrada por finalização, pode repetir)
+//   losses     = finalizações que eu sofri
+//   mirrorOf   = chave "uid|sessionId|rid" da rola do parceiro que esta confirma (não conta 2× no placar)
 const STORAGE_KEY = 'jj-diario';
 const SEM_TECNICA = 'Não registrada'; // usado ao migrar rolas antigas que só tinham o resultado
 
@@ -17,16 +20,18 @@ function loadSessions() {
   } catch {
     return [];
   }
-  // Migração: formato antigo tinha rolls[].result ('win' | 'loss' | 'draw')
+  // Migrações de formatos antigos
   let migrated = false;
   for (const s of list) {
     for (const r of s.rolls) {
+      // rolls[].result ('win' | 'loss' | 'draw') virou wins/losses
       if ('result' in r) {
         r.wins = r.result === 'win' ? [SEM_TECNICA] : [];
         r.losses = r.result === 'loss' ? [SEM_TECNICA] : [];
         delete r.result;
         migrated = true;
       }
+      if (!r.rid) { r.rid = newRid(); migrated = true; }
     }
   }
   if (migrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(list));
@@ -41,6 +46,14 @@ let sessions = loadSessions();
 
 // ===== Helpers =====
 const $ = (sel) => document.querySelector(sel);
+
+function newRid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+}
+
+function primeiroNome(nome) {
+  return (nome || '').split(' ')[0];
+}
 
 // Data local em "YYYY-MM-DD" (toISOString usaria UTC e podia virar o dia errado)
 function todayISO() {
@@ -295,7 +308,7 @@ function renderRolls() {
 }
 
 $('#btn-add-roll').addEventListener('click', () => {
-  rolls.push({ partner: '', partnerUid: null, wins: [], losses: [] });
+  rolls.push({ rid: newRid(), partner: '', partnerUid: null, wins: [], losses: [] });
   renderRolls();
   // Com membros no grupo, o mais comum é tocar num deles; sem grupo, já abre o teclado
   if (!otherMembers().length) rollsList.querySelector('.roll:last-child .roll-partner').focus();
@@ -375,7 +388,14 @@ function loadIntoForm(s) {
   form.study.value = s.study || '';
   selectedTechniques = [...s.techniques];
   renderSelectedTechniques();
-  rolls = s.rolls.map((r) => ({ partner: r.partner, partnerUid: r.partnerUid || null, wins: [...r.wins], losses: [...r.losses] }));
+  rolls = s.rolls.map((r) => ({
+    rid: r.rid || newRid(),
+    partner: r.partner,
+    partnerUid: r.partnerUid || null,
+    mirrorOf: r.mirrorOf || null,
+    wins: [...r.wins],
+    losses: [...r.losses],
+  }));
   renderRolls();
   editingId = s.id;
   $('#btn-salvar').textContent = 'Salvar alterações';
@@ -394,8 +414,20 @@ $('#btn-cancelar').addEventListener('click', () => {
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const data = new FormData(form);
+  const date = data.get('date');
+
+  // Se o parceiro já registrou uma rola comigo nesse dia, pergunta se é a mesma
+  // (pra não contar duas vezes no placar)
+  for (const r of rolls) {
+    if (!r.partnerUid || r.mirrorOf) continue;
+    const p = pendingConfirmations().find((x) => x.uid === r.partnerUid && x.date === date);
+    if (p && confirm(`${primeiroNome(p.name)} já registrou uma rola com você em ${formatDate(p.date)} (${descreveRolaDele(p)}). É a mesma rola?`)) {
+      r.mirrorOf = p.key;
+    }
+  }
+
   const campos = {
-    date: data.get('date'),
+    date,
     type: data.get('type'),
     duration: Number(data.get('duration')) || 0,
     techniques: [...selectedTechniques],
@@ -445,7 +477,8 @@ function renderRoll(r) {
   if (r.wins.length) partes.push(`<span class="r-win">${summarize(r.wins)}</span>`);
   if (r.losses.length) partes.push(`<span class="r-loss">${summarize(r.losses)}</span>`);
   if (!partes.length) partes.push('<span class="r-draw">empate</span>');
-  return `<li><strong>${r.partner || 'Sem nome'}</strong> · ${partes.join(' · ')}</li>`;
+  const conf = r.mirrorOf ? ' <span class="confirmada" title="Confirmada a partir do registro do parceiro">✓</span>' : '';
+  return `<li><strong>${r.partner || 'Sem nome'}</strong>${conf} · ${partes.join(' · ')}</li>`;
 }
 
 function renderNotas(s) {
@@ -580,6 +613,7 @@ function rerender() {
   const ativa = document.querySelector('.tab.active').dataset.tab;
   if (ativa === 'historico') renderHistorico();
   if (ativa === 'stats') renderStats();
+  if (ativa === 'grupo') renderGrupo();
 }
 
 window.jjApp = {
@@ -590,8 +624,20 @@ window.jjApp = {
     const remoteIds = new Set(remote.map((s) => s.id));
     const pendentes = sessions.filter((s) => !s.synced && !remoteIds.has(s.id));
     sessions = [...remote, ...pendentes];
+    // Treinos antigos no servidor podem ter rolas sem id: dá um id e regrava uma vez
+    for (const s of remote) {
+      if (s.rolls.some((r) => !r.rid)) {
+        s.rolls.forEach((r) => { r.rid ||= newRid(); });
+        window.jjSync?.upsert(s);
+      }
+    }
     saveSessions(sessions);
     rerender();
+  },
+  setIgnored(list) {
+    ignoredRolls = list;
+    if (document.querySelector('.tab.active').dataset.tab === 'grupo') renderGrupo();
+    updateGrupoBadge();
   },
   markSynced(id) {
     const s = sessions.find((x) => x.id === id);
@@ -610,11 +656,115 @@ window.jjApp = {
     group = data;
     renderRolls(); // chips de membros nas rolas
     if (document.querySelector('.tab.active').dataset.tab === 'grupo') renderGrupo();
+    updateGrupoBadge();
   },
 };
 
+// ===== Grupo: confirmação de rolas =====
+let ignoredRolls = []; // chaves das rolas que eu escolhi não confirmar (sincronizadas no perfil)
+
+function rollKey(uid, sessionId, rid) {
+  return `${uid}|${sessionId}|${rid}`;
+}
+
+// Rolas que outros membros registraram comigo e que eu ainda não confirmei nem ignorei
+function pendingConfirmations() {
+  if (!group || !currentUser) return [];
+  const me = currentUser.uid;
+  const jaConfirmadas = new Set(sessions.flatMap((s) => s.rolls.map((r) => r.mirrorOf).filter(Boolean)));
+  const ignoradas = new Set(ignoredRolls);
+  const out = [];
+  for (const s of group.sessions) {
+    if (s.uid === me) continue;
+    for (const r of s.rolls) {
+      if (r.partnerUid !== me || !r.rid || r.mirrorOf) continue;
+      const key = rollKey(s.uid, s.id, r.rid);
+      if (jaConfirmadas.has(key) || ignoradas.has(key)) continue;
+      const m = group.members[s.uid] || {};
+      out.push({ key, uid: s.uid, name: m.name || '?', photo: m.photo || '', date: s.date, type: s.type, duration: s.duration, roll: r });
+    }
+  }
+  return out.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+// "te pegou: Armlock ×2 · você pegou: Triângulo" — do meu ponto de vista
+function descreveRolaDele(p) {
+  const partes = [];
+  if (p.roll.wins.length) partes.push(`te pegou: ${summarize(p.roll.wins)}`);
+  if (p.roll.losses.length) partes.push(`você pegou: ${summarize(p.roll.losses)}`);
+  return partes.join(' · ') || 'sem finalização';
+}
+
+// Cria a rola no meu diário, invertida (o que ele aplicou eu sofri), no treino daquele dia
+function confirmRoll(p) {
+  const roll = {
+    rid: newRid(),
+    partner: p.name,
+    partnerUid: p.uid,
+    mirrorOf: p.key,
+    wins: [...p.roll.losses],
+    losses: [...p.roll.wins],
+  };
+  let s = sessions.find((x) => x.date === p.date);
+  if (s) {
+    s.rolls.push(roll);
+  } else {
+    s = { id: Date.now(), date: p.date, type: p.type, duration: p.duration, techniques: [], rolls: [roll], worked: '', stuck: '', study: '', studyDone: false };
+    sessions.push(s);
+  }
+  saveSessions(sessions);
+  window.jjSync?.upsert(s);
+  renderGrupo();
+  updateGrupoBadge();
+}
+
+function ignoreRoll(key) {
+  ignoredRolls.push(key);
+  window.jjSync?.ignoreRoll(key);
+  renderGrupo();
+  updateGrupoBadge();
+}
+
+function updateGrupoBadge() {
+  document.querySelector('[data-tab="grupo"]').classList.toggle('badge-dot', pendingConfirmations().length > 0);
+}
+
+function renderPendentes() {
+  const pendentes = pendingConfirmations();
+  if (!pendentes.length) return '';
+  return `
+    <h2>Rolas pra confirmar</h2>
+    ${pendentes.map((p) => `
+      <div class="pendente" data-key="${p.key}">
+        <div class="placar-head">
+          <img src="${p.photo}" alt="" referrerpolicy="no-referrer">
+          <strong>${primeiroNome(p.name)} registrou uma rola com você</strong>
+        </div>
+        <div class="placar-det">
+          <div>${formatDate(p.date)} · ${descreveRolaDele(p)}</div>
+        </div>
+        <div class="pendente-acoes">
+          <button type="button" class="btn-primary" data-action="confirmar">Confirmar</button>
+          <button type="button" class="btn-secondary" data-action="ignorar">Ignorar</button>
+        </div>
+      </div>`).join('')}`;
+}
+
 // ===== Grupo =====
 const grupoEl = $('#grupo-conteudo');
+
+grupoEl.addEventListener('click', (e) => {
+  const btn = e.target.closest('button[data-action]');
+  if (!btn) return;
+  const key = btn.closest('.pendente')?.dataset.key;
+  if (!key) return;
+  if (btn.dataset.action === 'confirmar') {
+    const p = pendingConfirmations().find((x) => x.key === key);
+    if (p) confirmRoll(p);
+  } else if (btn.dataset.action === 'ignorar') {
+    ignoreRoll(key);
+  }
+});
 
 function renderGrupo() {
   if (!currentUser) {
@@ -661,13 +811,17 @@ function renderGrupo() {
     return { ...m, treinos: doMes.length, minutos: doMes.reduce((acc, s) => acc + (s.duration || 0), 0) };
   }).sort((a, b) => b.treinos - a.treinos || b.minutos - a.minutos || a.name.localeCompare(b.name));
 
-  // Placar: eu × cada membro, usando os registros dos dois lados
+  // Placar: eu × cada membro, usando os registros dos dois lados.
+  // Uma rola confirmada (mirrorOf) é cópia da do parceiro: só conta se a original sumiu.
+  const existentes = new Set(group.sessions.flatMap((s) => s.rolls.map((r) => r.rid && rollKey(s.uid, s.id, r.rid))));
+  const contaRola = (r) => !r.mirrorOf || !existentes.has(r.mirrorOf);
   const placares = otherMembers().map((m) => {
     const minhas = [];  // finalizações que apliquei nele
     const dele = [];    // finalizações que ele aplicou em mim
     let rolas = 0;
     for (const s of group.sessions) {
       for (const r of s.rolls) {
+        if (!contaRola(r)) continue;
         if (s.uid === me && r.partnerUid === m.uid) {
           rolas++; minhas.push(...r.wins); dele.push(...r.losses);
         } else if (s.uid === m.uid && r.partnerUid === me) {
@@ -679,6 +833,7 @@ function renderGrupo() {
   }).filter((p) => p.rolas > 0).sort((a, b) => b.rolas - a.rolas);
 
   grupoEl.innerHTML = `
+    ${renderPendentes()}
     <div class="grupo-card">
       <h3>${group.name}</h3>
       <small>Código pra convidar:</small>

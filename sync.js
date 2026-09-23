@@ -4,7 +4,7 @@
 // Com login:
 //   users/{uid}/sessions/{id}   — treinos completos (privados)
 //   users/{uid}/meta/tecnicas   — técnicas personalizadas
-//   users/{uid}/meta/perfil     — { groupId } do grupo em que a pessoa está
+//   users/{uid}/meta/perfil     — { groupId, ignoredRolls: [chave] } grupo atual e rolas que a pessoa não quis confirmar
 //   groups/{gid}                — { name, code, createdBy, members: { uid: {name, photo} } }
 //   groups/{gid}/sessions/{id}  — cópia PÚBLICA do treino (sem as notas), visível pro grupo
 //   codes/{code}                — { groupId } pra entrar pelo código
@@ -18,7 +18,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, writeBatch,
+  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, arrayUnion, onSnapshot, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 
 // Não é segredo: é o "endereço" do projeto. O que protege os dados são as regras do Firestore.
@@ -105,8 +105,10 @@ function toGroupDoc(session) {
     duration: session.duration,
     techniques: session.techniques,
     rolls: session.rolls.map((r) => ({
+      rid: r.rid || null,
       partner: r.partner,
       partnerUid: r.partnerUid || null,
+      mirrorOf: r.mirrorOf || null,
       wins: r.wins,
       losses: r.losses,
     })),
@@ -138,6 +140,7 @@ function startSync(user) {
       return deleteDoc(doc(sessionsRef, String(id))).catch(onWriteError);
     },
     setCustom: (list) => setDoc(metaRef, { list }).catch(onWriteError),
+    ignoreRoll: (key) => setDoc(perfilRef, { ignoredRolls: arrayUnion(key) }, { merge: true }).catch(onWriteError),
   };
 
   let first = true;
@@ -170,7 +173,9 @@ function startSync(user) {
 
   // Perfil diz em qual grupo a pessoa está (sincroniza entre aparelhos)
   unsubs.perfil = onSnapshot(perfilRef, (snap) => {
-    const gid = snap.exists() ? snap.data().groupId || null : null;
+    const data = snap.exists() ? snap.data() : {};
+    window.jjApp.setIgnored(data.ignoredRolls || []);
+    const gid = data.groupId || null;
     if (gid !== groupId) watchGroup(gid);
   }, (err) => console.error('[sync] perfil:', err));
 }
