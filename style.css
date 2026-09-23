@@ -47,6 +47,7 @@ body {
 .auth-name { font-size: 13px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .sync-status { width: 8px; height: 8px; border-radius: 50%; background: var(--win); }
 .sync-status.pending { background: #ffb703; }
+.sync-status.error { background: var(--loss); }
 
 .tabs { display: flex; gap: 4px; }
 .tab {

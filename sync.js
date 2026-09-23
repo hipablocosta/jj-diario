@@ -68,11 +68,20 @@ async function login() {
   }
 }
 
-function setStatus(pending) {
+// estado: 'ok' | 'pending' | 'error'
+function setStatus(state, detail = '') {
   const el = document.querySelector('#sync-status');
   if (!el) return;
-  el.classList.toggle('pending', pending);
-  el.title = pending ? 'Aguardando conexão pra sincronizar' : 'Sincronizado';
+  el.className = `sync-status ${state}`;
+  el.title = { ok: 'Sincronizado', pending: 'Aguardando conexão pra sincronizar', error: `Erro ao sincronizar: ${detail}` }[state];
+}
+
+function onWriteError(err) {
+  console.error('[sync] gravar:', err);
+  setStatus('error', err.message);
+  if (err.code === 'permission-denied') {
+    alert('O Firestore recusou a gravação (permission-denied). Confere se as regras foram publicadas.');
+  }
 }
 
 // ===== Firestore =====
@@ -86,11 +95,15 @@ function startSync(user) {
   const sessionsRef = collection(db, 'users', user.uid, 'sessions');
   const metaRef = doc(db, 'users', user.uid, 'meta', 'tecnicas');
 
-  // O que o app chama quando algo muda localmente
+  // O que o app chama quando algo muda localmente.
+  // A promessa do setDoc só resolve quando o servidor confirma — aí sim marcamos
+  // como sincronizado. Até lá o treino continua "só local" e nunca é descartado.
   window.jjSync = {
-    upsert: (session) => setDoc(doc(sessionsRef, String(session.id)), toDoc(session)),
-    remove: (id) => deleteDoc(doc(sessionsRef, String(id))),
-    setCustom: (list) => setDoc(metaRef, { list }),
+    upsert: (session) => setDoc(doc(sessionsRef, String(session.id)), toDoc(session))
+      .then(() => window.jjApp.markSynced(session.id))
+      .catch(onWriteError),
+    remove: (id) => deleteDoc(doc(sessionsRef, String(id))).catch(onWriteError),
+    setCustom: (list) => setDoc(metaRef, { list }).catch(onWriteError),
   };
 
   let first = true;
@@ -102,13 +115,16 @@ function startSync(user) {
       // Primeira sincronização neste dispositivo: sobe o que só existe aqui
       const remoteIds = new Set(remote.map((s) => s.id));
       const locais = window.jjApp.getSessions().filter((s) => !s.synced && !remoteIds.has(s.id));
+      console.log(`[sync] ${remote.length} no servidor, ${locais.length} só neste aparelho`);
       for (const s of locais) window.jjSync.upsert(s);
-      window.jjApp.replaceSessions([...remote, ...locais.map((s) => ({ ...s, synced: true }))]);
-    } else {
-      window.jjApp.replaceSessions(remote);
     }
-    setStatus(snap.metadata.hasPendingWrites);
-  }, (err) => console.error('[sync] sessões:', err));
+    // replaceSessions preserva o que ainda não foi confirmado pelo servidor
+    window.jjApp.replaceSessions(remote);
+    setStatus(snap.metadata.hasPendingWrites ? 'pending' : 'ok');
+  }, (err) => {
+    console.error('[sync] sessões:', err);
+    setStatus('error', err.message);
+  });
 
   unsubscribeMeta = onSnapshot(metaRef, (snap) => {
     const remote = snap.exists() ? snap.data().list || [] : [];

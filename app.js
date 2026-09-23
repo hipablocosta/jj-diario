@@ -496,10 +496,18 @@ function rerender() {
 
 window.jjApp = {
   getSessions: () => sessions,
-  replaceSessions(list) {
-    sessions = list;
+  // Recebe a lista do servidor. Treinos locais que o servidor ainda não confirmou
+  // (sem `synced`) são mantidos — senão uma falha de gravação apagaria dados.
+  replaceSessions(remote) {
+    const remoteIds = new Set(remote.map((s) => s.id));
+    const pendentes = sessions.filter((s) => !s.synced && !remoteIds.has(s.id));
+    sessions = [...remote, ...pendentes];
     saveSessions(sessions);
     rerender();
+  },
+  markSynced(id) {
+    const s = sessions.find((x) => x.id === id);
+    if (s) { s.synced = true; saveSessions(sessions); }
   },
   getCustom: () => customTechniques,
   replaceCustom(list) {
