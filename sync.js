@@ -4,8 +4,9 @@
 // Com login:
 //   users/{uid}/sessions/{id}   — treinos completos (privados)
 //   users/{uid}/meta/tecnicas   — técnicas personalizadas
-//   users/{uid}/meta/perfil     — { groupId, ignoredRolls: [chave] } grupo atual e rolas que a pessoa não quis confirmar
-//   groups/{gid}                — { name, code, createdBy, members: { uid: {name, photo} } }
+//   users/{uid}/meta/perfil     — { groupId } grupo atual (ignoredRolls é legado, migrado pra members.refused)
+//   groups/{gid}                — { name, code, createdBy, members: { uid: {name, photo, refused: [chave]} } }
+//                                 refused = rolas registradas por outros comigo que eu não confirmei
 //   groups/{gid}/sessions/{id}  — cópia PÚBLICA do treino (sem as notas), visível pro grupo
 //   codes/{code}                — { groupId } pra entrar pelo código
 //
@@ -140,7 +141,11 @@ function startSync(user) {
       return deleteDoc(doc(sessionsRef, String(id))).catch(onWriteError);
     },
     setCustom: (list) => setDoc(metaRef, { list }).catch(onWriteError),
-    ignoreRoll: (key) => setDoc(perfilRef, { ignoredRolls: arrayUnion(key) }, { merge: true }).catch(onWriteError),
+    // Recusa fica na minha entrada de membro do grupo (pública pro grupo, sem regra nova)
+    refuseRoll: (key) => {
+      if (!groupId) return Promise.resolve();
+      return updateDoc(doc(db, 'groups', groupId), { [`members.${user.uid}.refused`]: arrayUnion(key) }).catch(onWriteError);
+    },
   };
 
   let first = true;

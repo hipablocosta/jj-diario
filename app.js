@@ -472,13 +472,18 @@ function matchesSearch(s, q) {
   return normalize(haystack).includes(q);
 }
 
-function renderRoll(r) {
+function renderRoll(r, s) {
   const partes = [];
   if (r.wins.length) partes.push(`<span class="r-win">${summarize(r.wins)}</span>`);
   if (r.losses.length) partes.push(`<span class="r-loss">${summarize(r.losses)}</span>`);
   if (!partes.length) partes.push('<span class="r-draw">empate</span>');
-  const conf = r.mirrorOf ? ' <span class="confirmada" title="Confirmada a partir do registro do parceiro">✓</span>' : '';
-  return `<li><strong>${r.partner || 'Sem nome'}</strong>${conf} · ${partes.join(' · ')}</li>`;
+  let marca = '';
+  if (r.mirrorOf) {
+    marca = ' <span class="confirmada" title="Confirmada a partir do registro do parceiro">✓</span>';
+  } else if (currentUser && r.rid && refusedKeys().has(rollKey(currentUser.uid, s.id, r.rid))) {
+    marca = ' <span class="recusada" title="O parceiro não confirmou esta rola; ela não conta no placar">✗ não confirmada</span>';
+  }
+  return `<li><strong>${r.partner || 'Sem nome'}</strong>${marca} · ${partes.join(' · ')}</li>`;
 }
 
 function renderNotas(s) {
@@ -513,7 +518,7 @@ function renderHistorico() {
         <span class="badge ${s.type}">${s.type === 'gi' ? 'Gi' : 'No-Gi'} · ${s.duration}min</span>
       </div>
       ${s.techniques.length ? `<div class="chips">${s.techniques.map((t) => `<span class="chip">${t}</span>`).join('')}</div>` : ''}
-      ${s.rolls.length ? `<ul class="sessao-rolas">${s.rolls.map(renderRoll).join('')}</ul>` : ''}
+      ${s.rolls.length ? `<ul class="sessao-rolas">${s.rolls.map((r) => renderRoll(r, s)).join('')}</ul>` : ''}
       ${renderNotas(s)}
       <div class="sessao-actions">
         <button type="button" class="btn-edit">Editar</button>
@@ -636,6 +641,7 @@ window.jjApp = {
   },
   setIgnored(list) {
     ignoredRolls = list;
+    syncRefusals();
     if (document.querySelector('.tab.active').dataset.tab === 'grupo') renderGrupo();
     updateGrupoBadge();
   },
@@ -654,25 +660,39 @@ window.jjApp = {
   },
   setGroup(data) {
     group = data;
+    syncRefusals();
     renderRolls(); // chips de membros nas rolas
-    if (document.querySelector('.tab.active').dataset.tab === 'grupo') renderGrupo();
+    rerender();
     updateGrupoBadge();
   },
 };
 
 // ===== Grupo: confirmação de rolas =====
-let ignoredRolls = []; // chaves das rolas que eu escolhi não confirmar (sincronizadas no perfil)
+let ignoredRolls = []; // legado: recusas antigas guardadas no perfil; migradas pra members.refused
 
 function rollKey(uid, sessionId, rid) {
   return `${uid}|${sessionId}|${rid}`;
 }
 
-// Rolas que outros membros registraram comigo e que eu ainda não confirmei nem ignorei
+// Chaves das rolas que algum membro recusou ("não foi assim") — pública, vale pro placar dos dois lados
+function refusedKeys() {
+  if (!group) return new Set(ignoredRolls);
+  return new Set([...ignoredRolls, ...Object.values(group.members).flatMap((m) => m.refused || [])]);
+}
+
+// Recusas feitas na versão antiga (perfil privado) sobem pra entrada pública de membro
+function syncRefusals() {
+  if (!group || !currentUser || !window.jjSync) return;
+  const publicas = new Set(group.members[currentUser.uid]?.refused || []);
+  for (const k of ignoredRolls) if (!publicas.has(k)) window.jjSync.refuseRoll(k);
+}
+
+// Rolas que outros membros registraram comigo e que eu ainda não confirmei nem recusei
 function pendingConfirmations() {
   if (!group || !currentUser) return [];
   const me = currentUser.uid;
   const jaConfirmadas = new Set(sessions.flatMap((s) => s.rolls.map((r) => r.mirrorOf).filter(Boolean)));
-  const ignoradas = new Set(ignoredRolls);
+  const ignoradas = refusedKeys();
   const out = [];
   for (const s of group.sessions) {
     if (s.uid === me) continue;
@@ -718,9 +738,9 @@ function confirmRoll(p) {
   updateGrupoBadge();
 }
 
-function ignoreRoll(key) {
-  ignoredRolls.push(key);
-  window.jjSync?.ignoreRoll(key);
+function refuseRoll(key) {
+  ignoredRolls.push(key); // feedback imediato; o grupo confirma em seguida
+  window.jjSync?.refuseRoll(key);
   renderGrupo();
   updateGrupoBadge();
 }
@@ -745,9 +765,10 @@ function renderPendentes() {
         </div>
         <div class="pendente-acoes">
           <button type="button" class="btn-primary" data-action="confirmar">Confirmar</button>
-          <button type="button" class="btn-secondary" data-action="ignorar">Ignorar</button>
+          <button type="button" class="btn-secondary" data-action="recusar">Não foi assim</button>
         </div>
-      </div>`).join('')}`;
+      </div>`).join('')}
+    <small class="dica">Confirmar coloca a rola no seu diário. Recusar tira do placar.</small>`;
 }
 
 // ===== Grupo =====
@@ -761,8 +782,8 @@ grupoEl.addEventListener('click', (e) => {
   if (btn.dataset.action === 'confirmar') {
     const p = pendingConfirmations().find((x) => x.key === key);
     if (p) confirmRoll(p);
-  } else if (btn.dataset.action === 'ignorar') {
-    ignoreRoll(key);
+  } else if (btn.dataset.action === 'recusar') {
+    refuseRoll(key);
   }
 });
 
@@ -812,25 +833,32 @@ function renderGrupo() {
   }).sort((a, b) => b.treinos - a.treinos || b.minutos - a.minutos || a.name.localeCompare(b.name));
 
   // Placar: eu × cada membro, usando os registros dos dois lados.
-  // Uma rola confirmada (mirrorOf) é cópia da do parceiro: só conta se a original sumiu.
+  // - Rola confirmada (mirrorOf) é cópia da do parceiro: só conta se a original sumiu.
+  // - Rola recusada pelo parceiro ("não foi assim") não conta.
+  // - Rola ainda não confirmada conta, mas aparece como "aguardando".
   const existentes = new Set(group.sessions.flatMap((s) => s.rolls.map((r) => r.rid && rollKey(s.uid, s.id, r.rid))));
-  const contaRola = (r) => !r.mirrorOf || !existentes.has(r.mirrorOf);
+  const confirmadas = existentes.size ? new Set(group.sessions.flatMap((s) => s.rolls.map((r) => r.mirrorOf).filter(Boolean))) : new Set();
+  const recusadas = refusedKeys();
   const placares = otherMembers().map((m) => {
     const minhas = [];  // finalizações que apliquei nele
     const dele = [];    // finalizações que ele aplicou em mim
-    let rolas = 0;
+    let rolas = 0, aguardando = 0, recusadasN = 0;
     for (const s of group.sessions) {
       for (const r of s.rolls) {
-        if (!contaRola(r)) continue;
-        if (s.uid === me && r.partnerUid === m.uid) {
-          rolas++; minhas.push(...r.wins); dele.push(...r.losses);
-        } else if (s.uid === m.uid && r.partnerUid === me) {
-          rolas++; minhas.push(...r.losses); dele.push(...r.wins);
-        }
+        const minha = s.uid === me && r.partnerUid === m.uid;
+        const deleComigo = s.uid === m.uid && r.partnerUid === me;
+        if (!minha && !deleComigo) continue;
+        const key = r.rid ? rollKey(s.uid, s.id, r.rid) : null;
+        if (r.mirrorOf && existentes.has(r.mirrorOf)) continue; // cópia: a original conta
+        if (key && recusadas.has(key)) { recusadasN++; continue; }
+        if (key && !r.mirrorOf && !confirmadas.has(key)) aguardando++;
+        rolas++;
+        if (minha) { minhas.push(...r.wins); dele.push(...r.losses); }
+        else { minhas.push(...r.losses); dele.push(...r.wins); }
       }
     }
-    return { ...m, rolas, minhas, dele };
-  }).filter((p) => p.rolas > 0).sort((a, b) => b.rolas - a.rolas);
+    return { ...m, rolas, aguardando, recusadas: recusadasN, minhas, dele };
+  }).filter((p) => p.rolas + p.recusadas > 0).sort((a, b) => b.rolas - a.rolas);
 
   grupoEl.innerHTML = `
     ${renderPendentes()}
@@ -860,7 +888,7 @@ function renderGrupo() {
           <span class="placar-num"><span class="w">${p.minhas.length}</span><span class="x">×</span><span class="l">${p.dele.length}</span></span>
         </div>
         <div class="placar-det">
-          <div>${p.rolas} ${p.rolas === 1 ? 'rola' : 'rolas'}</div>
+          <div>${p.rolas} ${p.rolas === 1 ? 'rola' : 'rolas'}${p.aguardando ? ` · ${p.aguardando} aguardando confirmação` : ''}${p.recusadas ? ` · ${p.recusadas} ${p.recusadas === 1 ? 'recusada' : 'recusadas'}` : ''}</div>
           ${p.minhas.length ? `<div><span class="r-win">Você pegou:</span> ${summarize(p.minhas)}</div>` : ''}
           ${p.dele.length ? `<div><span class="r-loss">Te pegou:</span> ${summarize(p.dele)}</div>` : ''}
         </div>

@@ -312,6 +312,8 @@ button, .file-label {
 .pendente-acoes { display: flex; gap: 8px; margin-top: 10px; }
 .pendente-acoes button { flex: 1; margin: 0; padding: 10px; font-size: 14px; }
 .confirmada { color: var(--win); font-size: 12px; }
+.recusada { color: var(--loss); font-size: 12px; }
+.dica { display: block; color: var(--muted); font-size: 12px; margin: -4px 0 14px; }
 .tab.badge-dot::after { content: "●"; color: var(--accent); font-size: 8px; margin-left: 4px; vertical-align: top; }
 
 /* Pendências de estudo (Stats) */
