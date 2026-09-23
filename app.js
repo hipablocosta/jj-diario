@@ -86,8 +86,22 @@ document.querySelectorAll('.tab').forEach((btn) => {
     $(`#tab-${btn.dataset.tab}`).classList.add('active');
     if (btn.dataset.tab === 'historico') renderHistorico();
     if (btn.dataset.tab === 'stats') renderStats();
+    if (btn.dataset.tab === 'grupo') renderGrupo();
   });
 });
+
+// ===== Usuário logado e grupo (alimentados pelo sync.js) =====
+let currentUser = null; // { uid, name, photo } ou null
+let group = null;       // { id, name, code, members: {uid: {name, photo}}, sessions: [] } ou null
+
+// Membros do grupo, menos eu
+function otherMembers() {
+  if (!group) return [];
+  return Object.entries(group.members)
+    .filter(([uid]) => uid !== currentUser?.uid)
+    .map(([uid, m]) => ({ uid, ...m }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
 
 // ===== Catálogo de técnicas =====
 const CUSTOM_KEY = 'jj-tecnicas-custom';
@@ -249,6 +263,15 @@ $('#btn-add-tecnica').addEventListener('click', () => {
 let rolls = [];
 const rollsList = $('#rolls-list');
 
+function renderMemberChips(r) {
+  const membros = otherMembers();
+  if (!membros.length) return '';
+  return `<div class="member-chips">${membros.map((m) => `
+    <button type="button" class="member-chip ${r.partnerUid === m.uid ? 'selected' : ''}" data-action="member" data-uid="${m.uid}" data-name="${m.name}">
+      <img src="${m.photo}" alt="" referrerpolicy="no-referrer">${m.name.split(' ')[0]}
+    </button>`).join('')}</div>`;
+}
+
 function renderRolls() {
   rollsList.innerHTML = rolls.map((r, i) => `
     <div class="roll" data-index="${i}">
@@ -256,6 +279,7 @@ function renderRolls() {
         <input type="text" class="roll-partner" placeholder="Parceiro" value="${r.partner}" autocomplete="off">
         <button type="button" class="btn-remove" data-action="remove" aria-label="Remover rola">×</button>
       </div>
+      ${renderMemberChips(r)}
       <div class="roll-subs">
         <span class="roll-label win">Finalizei</span>
         <div class="chips">${chipList(r.wins, 'data-list="wins"')}</div>
@@ -271,16 +295,22 @@ function renderRolls() {
 }
 
 $('#btn-add-roll').addEventListener('click', () => {
-  rolls.push({ partner: '', wins: [], losses: [] });
+  rolls.push({ partner: '', partnerUid: null, wins: [], losses: [] });
   renderRolls();
-  rollsList.querySelector('.roll:last-child .roll-partner').focus();
+  // Com membros no grupo, o mais comum é tocar num deles; sem grupo, já abre o teclado
+  if (!otherMembers().length) rollsList.querySelector('.roll:last-child .roll-partner').focus();
 });
 
-// Parceiro: atualiza o estado sem re-renderizar (senão perde o foco enquanto digita)
+// Parceiro: atualiza o estado sem re-renderizar (senão perde o foco enquanto digita).
+// Digitar um nome diferente desfaz a ligação com o membro do grupo.
 rollsList.addEventListener('input', (e) => {
   if (!e.target.classList.contains('roll-partner')) return;
   const i = Number(e.target.closest('.roll').dataset.index);
   rolls[i].partner = e.target.value;
+  if (rolls[i].partnerUid && group?.members[rolls[i].partnerUid]?.name !== e.target.value) {
+    rolls[i].partnerUid = null;
+    e.target.closest('.roll').querySelector('.member-chip.selected')?.classList.remove('selected');
+  }
 });
 
 rollsList.addEventListener('click', (e) => {
@@ -291,6 +321,16 @@ rollsList.addEventListener('click', (e) => {
 
   if (btn.dataset.action === 'remove') {
     rolls.splice(i, 1);
+    renderRolls();
+  } else if (btn.dataset.action === 'member') {
+    // Toca de novo no mesmo membro desfaz a ligação
+    if (roll.partnerUid === btn.dataset.uid) {
+      roll.partnerUid = null;
+      roll.partner = '';
+    } else {
+      roll.partnerUid = btn.dataset.uid;
+      roll.partner = btn.dataset.name;
+    }
     renderRolls();
   } else if (btn.classList.contains('chip-remove')) {
     roll[btn.dataset.list].splice(Number(btn.dataset.index), 1);
@@ -335,7 +375,7 @@ function loadIntoForm(s) {
   form.study.value = s.study || '';
   selectedTechniques = [...s.techniques];
   renderSelectedTechniques();
-  rolls = s.rolls.map((r) => ({ partner: r.partner, wins: [...r.wins], losses: [...r.losses] }));
+  rolls = s.rolls.map((r) => ({ partner: r.partner, partnerUid: r.partnerUid || null, wins: [...r.wins], losses: [...r.losses] }));
   renderRolls();
   editingId = s.id;
   $('#btn-salvar').textContent = 'Salvar alterações';
@@ -562,7 +602,136 @@ window.jjApp = {
     customTechniques = list;
     localStorage.setItem(CUSTOM_KEY, JSON.stringify(customTechniques));
   },
+  setUser(user) {
+    currentUser = user;
+    if (document.querySelector('.tab.active').dataset.tab === 'grupo') renderGrupo();
+  },
+  setGroup(data) {
+    group = data;
+    renderRolls(); // chips de membros nas rolas
+    if (document.querySelector('.tab.active').dataset.tab === 'grupo') renderGrupo();
+  },
 };
+
+// ===== Grupo =====
+const grupoEl = $('#grupo-conteudo');
+
+function renderGrupo() {
+  if (!currentUser) {
+    grupoEl.innerHTML = `<p class="vazio">Entra com o Google (botão no topo) pra criar ou entrar num grupo.</p>`;
+    return;
+  }
+  if (!group) {
+    grupoEl.innerHTML = `
+      <div class="grupo-card">
+        <h3>Criar um grupo</h3>
+        <small>Você recebe um código pra mandar pros amigos.</small>
+        <form class="grupo-form" id="form-criar-grupo">
+          <input type="text" name="name" placeholder="Nome (ex: Academia X)" required maxlength="40" autocomplete="off">
+          <button type="submit" class="btn-primary">Criar</button>
+        </form>
+      </div>
+      <p class="ou">ou</p>
+      <div class="grupo-card">
+        <h3>Entrar num grupo</h3>
+        <small>Pede o código pra quem criou.</small>
+        <form class="grupo-form" id="form-entrar-grupo">
+          <input type="text" name="code" class="code" placeholder="CÓDIGO" required maxlength="6" autocomplete="off" autocapitalize="characters">
+          <button type="submit" class="btn-primary">Entrar</button>
+        </form>
+      </div>`;
+    $('#form-criar-grupo').addEventListener('submit', (e) => {
+      e.preventDefault();
+      acaoGrupo(e.target, () => window.jjGroup.create(e.target.name.value.trim()));
+    });
+    $('#form-entrar-grupo').addEventListener('submit', (e) => {
+      e.preventDefault();
+      acaoGrupo(e.target, () => window.jjGroup.join(e.target.code.value));
+    });
+    return;
+  }
+
+  const me = currentUser.uid;
+  const mesAtual = todayISO().slice(0, 7);
+  const membros = Object.entries(group.members).map(([uid, m]) => ({ uid, ...m }));
+
+  // Ranking do mês: treinos e minutos por membro
+  const ranking = membros.map((m) => {
+    const doMes = group.sessions.filter((s) => s.uid === m.uid && s.date.startsWith(mesAtual));
+    return { ...m, treinos: doMes.length, minutos: doMes.reduce((acc, s) => acc + (s.duration || 0), 0) };
+  }).sort((a, b) => b.treinos - a.treinos || b.minutos - a.minutos || a.name.localeCompare(b.name));
+
+  // Placar: eu × cada membro, usando os registros dos dois lados
+  const placares = otherMembers().map((m) => {
+    const minhas = [];  // finalizações que apliquei nele
+    const dele = [];    // finalizações que ele aplicou em mim
+    let rolas = 0;
+    for (const s of group.sessions) {
+      for (const r of s.rolls) {
+        if (s.uid === me && r.partnerUid === m.uid) {
+          rolas++; minhas.push(...r.wins); dele.push(...r.losses);
+        } else if (s.uid === m.uid && r.partnerUid === me) {
+          rolas++; minhas.push(...r.losses); dele.push(...r.wins);
+        }
+      }
+    }
+    return { ...m, rolas, minhas, dele };
+  }).filter((p) => p.rolas > 0).sort((a, b) => b.rolas - a.rolas);
+
+  grupoEl.innerHTML = `
+    <div class="grupo-card">
+      <h3>${group.name}</h3>
+      <small>Código pra convidar:</small>
+      <div class="grupo-code">${group.code}</div>
+      <small>${membros.length} ${membros.length === 1 ? 'membro' : 'membros'}</small>
+    </div>
+
+    <h2>Ranking do mês</h2>
+    <ul class="membros">${ranking.map((m, i) => `
+      <li>
+        <img src="${m.photo}" alt="" referrerpolicy="no-referrer">
+        <span>${m.name}${m.uid === me ? '<span class="voce">você</span>' : ''}</span>
+        <span class="num">${m.treinos} ${m.treinos === 1 ? 'treino' : 'treinos'}</span>
+        <span class="num">${(m.minutos / 60).toFixed(1)}h</span>
+      </li>`).join('')}
+    </ul>
+
+    <h2>Placar</h2>
+    ${placares.length ? placares.map((p) => `
+      <div class="placar">
+        <div class="placar-head">
+          <img src="${p.photo}" alt="" referrerpolicy="no-referrer">
+          <strong>Você × ${p.name.split(' ')[0]}</strong>
+          <span class="placar-num"><span class="w">${p.minhas.length}</span><span class="x">×</span><span class="l">${p.dele.length}</span></span>
+        </div>
+        <div class="placar-det">
+          <div>${p.rolas} ${p.rolas === 1 ? 'rola' : 'rolas'}</div>
+          ${p.minhas.length ? `<div><span class="r-win">Você pegou:</span> ${summarize(p.minhas)}</div>` : ''}
+          ${p.dele.length ? `<div><span class="r-loss">Te pegou:</span> ${summarize(p.dele)}</div>` : ''}
+        </div>
+      </div>`).join('')
+    : `<p class="vazio-inline">Nenhuma rola com membro do grupo ainda. Ao adicionar uma rola, toca no nome do parceiro pra ligar.</p>`}
+
+    <button type="button" id="btn-sair-grupo" class="btn-secondary btn-sair-grupo">Sair do grupo</button>
+  `;
+
+  $('#btn-sair-grupo').addEventListener('click', () => {
+    if (!confirm(`Sair de "${group.name}"? Seus treinos somem do grupo (continuam no seu diário).`)) return;
+    acaoGrupo(null, () => window.jjGroup.leave());
+  });
+}
+
+// Roda uma ação do grupo desabilitando o formulário enquanto espera
+async function acaoGrupo(form, fn) {
+  const btn = form?.querySelector('button');
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  try {
+    await fn();
+  } catch (err) {
+    alert(err.message);
+    renderGrupo();
+  }
+}
 
 // ===== Backup =====
 $('#btn-export').addEventListener('click', () => {

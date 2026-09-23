@@ -1,13 +1,16 @@
-// Sincronização com Firebase (login Google + Firestore).
+// Sincronização com Firebase (login Google + Firestore) e grupos.
 //
 // Sem login, o app funciona só com localStorage, como sempre.
-// Com login, cada treino vira um documento em users/{uid}/sessions/{id} e as
-// técnicas personalizadas ficam em users/{uid}/meta/tecnicas. O Firestore guarda
-// uma cópia local (funciona offline) e avisa em tempo real quando outro
-// dispositivo muda algo.
+// Com login:
+//   users/{uid}/sessions/{id}   — treinos completos (privados)
+//   users/{uid}/meta/tecnicas   — técnicas personalizadas
+//   users/{uid}/meta/perfil     — { groupId } do grupo em que a pessoa está
+//   groups/{gid}                — { name, code, createdBy, members: { uid: {name, photo} } }
+//   groups/{gid}/sessions/{id}  — cópia PÚBLICA do treino (sem as notas), visível pro grupo
+//   codes/{code}                — { groupId } pra entrar pelo código
 //
 // Este arquivo é um módulo ES (carrega depois do app.js) e conversa com ele por
-// window.jjApp (o app expõe) e window.jjSync (este arquivo expõe quando logado).
+// window.jjApp (o app expõe) e window.jjSync / window.jjGroup (este arquivo expõe).
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-app.js';
 import {
@@ -15,7 +18,7 @@ import {
 } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-auth.js';
 import {
   initializeFirestore, persistentLocalCache, persistentMultipleTabManager,
-  collection, doc, setDoc, deleteDoc, onSnapshot,
+  collection, doc, getDoc, setDoc, updateDoc, deleteDoc, deleteField, onSnapshot, writeBatch,
 } from 'https://www.gstatic.com/firebasejs/12.3.0/firebase-firestore.js';
 
 // Não é segredo: é o "endereço" do projeto. O que protege os dados são as regras do Firestore.
@@ -35,8 +38,9 @@ const db = initializeFirestore(app, {
 });
 
 const authEl = document.querySelector('#auth');
-let unsubscribeSessions = null;
-let unsubscribeMeta = null;
+let currentUser = null;
+const unsubs = { sessions: null, meta: null, perfil: null, group: null, groupSessions: null };
+let groupId = null;
 
 // ===== UI de login =====
 function renderAuth(user) {
@@ -84,30 +88,60 @@ function onWriteError(err) {
   }
 }
 
-// ===== Firestore =====
-// Documento = sessão sem o campo `synced` (que é controle local) e sem undefined
+// ===== Documentos =====
+// Treino completo, sem o campo `synced` (controle local) e sem undefined
 function toDoc(session) {
   const { synced, ...rest } = session;
   return JSON.parse(JSON.stringify(rest));
 }
 
+// Versão pública do treino pro grupo: sem Funcionou / Travei em / Pra estudar
+function toGroupDoc(session) {
+  return JSON.parse(JSON.stringify({
+    id: session.id,
+    uid: currentUser.uid,
+    date: session.date,
+    type: session.type,
+    duration: session.duration,
+    techniques: session.techniques,
+    rolls: session.rolls.map((r) => ({
+      partner: r.partner,
+      partnerUid: r.partnerUid || null,
+      wins: r.wins,
+      losses: r.losses,
+    })),
+  }));
+}
+
+function memberInfo(user) {
+  return { name: user.displayName || user.email, photo: user.photoURL || '' };
+}
+
+// ===== Sincronização dos treinos =====
 function startSync(user) {
   const sessionsRef = collection(db, 'users', user.uid, 'sessions');
   const metaRef = doc(db, 'users', user.uid, 'meta', 'tecnicas');
+  const perfilRef = doc(db, 'users', user.uid, 'meta', 'perfil');
 
   // O que o app chama quando algo muda localmente.
   // A promessa do setDoc só resolve quando o servidor confirma — aí sim marcamos
   // como sincronizado. Até lá o treino continua "só local" e nunca é descartado.
   window.jjSync = {
-    upsert: (session) => setDoc(doc(sessionsRef, String(session.id)), toDoc(session))
-      .then(() => window.jjApp.markSynced(session.id))
-      .catch(onWriteError),
-    remove: (id) => deleteDoc(doc(sessionsRef, String(id))).catch(onWriteError),
+    upsert: (session) => {
+      publishToGroup(session);
+      return setDoc(doc(sessionsRef, String(session.id)), toDoc(session))
+        .then(() => window.jjApp.markSynced(session.id))
+        .catch(onWriteError);
+    },
+    remove: (id) => {
+      unpublishFromGroup(id);
+      return deleteDoc(doc(sessionsRef, String(id))).catch(onWriteError);
+    },
     setCustom: (list) => setDoc(metaRef, { list }).catch(onWriteError),
   };
 
   let first = true;
-  unsubscribeSessions = onSnapshot(sessionsRef, { includeMetadataChanges: true }, (snap) => {
+  unsubs.sessions = onSnapshot(sessionsRef, { includeMetadataChanges: true }, (snap) => {
     const remote = snap.docs.map((d) => ({ ...d.data(), synced: true }));
 
     if (first) {
@@ -126,24 +160,138 @@ function startSync(user) {
     setStatus('error', err.message);
   });
 
-  unsubscribeMeta = onSnapshot(metaRef, (snap) => {
+  unsubs.meta = onSnapshot(metaRef, (snap) => {
     const remote = snap.exists() ? snap.data().list || [] : [];
     const local = window.jjApp.getCustom();
     const union = [...new Set([...remote, ...local])];
     window.jjApp.replaceCustom(union);
     if (union.length !== remote.length) window.jjSync.setCustom(union);
   }, (err) => console.error('[sync] técnicas:', err));
+
+  // Perfil diz em qual grupo a pessoa está (sincroniza entre aparelhos)
+  unsubs.perfil = onSnapshot(perfilRef, (snap) => {
+    const gid = snap.exists() ? snap.data().groupId || null : null;
+    if (gid !== groupId) watchGroup(gid);
+  }, (err) => console.error('[sync] perfil:', err));
 }
 
+// ===== Grupos =====
+const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // sem 0/O, 1/I
+function newCode() {
+  return Array.from({ length: 6 }, () => CODE_ALPHABET[Math.floor(Math.random() * CODE_ALPHABET.length)]).join('');
+}
+
+let groupData = null; // { id, name, code, members }
+
+function publishToGroup(session) {
+  if (!groupId) return;
+  setDoc(doc(db, 'groups', groupId, 'sessions', String(session.id)), toGroupDoc(session)).catch(onWriteError);
+}
+
+function unpublishFromGroup(id) {
+  if (!groupId) return;
+  deleteDoc(doc(db, 'groups', groupId, 'sessions', String(id))).catch(onWriteError);
+}
+
+// Ao entrar num grupo, publica todo o histórico (em lotes de até 400)
+async function publishAll(gid) {
+  const sessions = window.jjApp.getSessions();
+  for (let i = 0; i < sessions.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const s of sessions.slice(i, i + 400)) {
+      batch.set(doc(db, 'groups', gid, 'sessions', String(s.id)), toGroupDoc(s));
+    }
+    await batch.commit();
+  }
+}
+
+async function unpublishAll(gid) {
+  const sessions = window.jjApp.getSessions();
+  for (let i = 0; i < sessions.length; i += 400) {
+    const batch = writeBatch(db);
+    for (const s of sessions.slice(i, i + 400)) {
+      batch.delete(doc(db, 'groups', gid, 'sessions', String(s.id)));
+    }
+    await batch.commit();
+  }
+}
+
+function watchGroup(gid) {
+  unsubs.group?.();
+  unsubs.groupSessions?.();
+  unsubs.group = unsubs.groupSessions = null;
+  groupId = gid;
+  groupData = null;
+
+  if (!gid) {
+    window.jjApp.setGroup(null);
+    return;
+  }
+
+  let sessions = [];
+  const emit = () => {
+    if (groupData) window.jjApp.setGroup({ ...groupData, sessions });
+  };
+
+  unsubs.group = onSnapshot(doc(db, 'groups', gid), (snap) => {
+    if (!snap.exists()) { groupData = null; window.jjApp.setGroup(null); return; }
+    groupData = { id: gid, ...snap.data() };
+    emit();
+  }, (err) => console.error('[grupo] grupo:', err));
+
+  unsubs.groupSessions = onSnapshot(collection(db, 'groups', gid, 'sessions'), (snap) => {
+    sessions = snap.docs.map((d) => d.data());
+    emit();
+  }, (err) => console.error('[grupo] sessões:', err));
+}
+
+window.jjGroup = {
+  async create(name) {
+    const gid = doc(collection(db, 'groups')).id;
+    const code = newCode();
+    await setDoc(doc(db, 'groups', gid), {
+      name,
+      code,
+      createdBy: currentUser.uid,
+      createdAt: Date.now(),
+      members: { [currentUser.uid]: memberInfo(currentUser) },
+    });
+    await setDoc(doc(db, 'codes', code), { groupId: gid });
+    await publishAll(gid);
+    await setDoc(doc(db, 'users', currentUser.uid, 'meta', 'perfil'), { groupId: gid }, { merge: true });
+  },
+
+  async join(code) {
+    const snap = await getDoc(doc(db, 'codes', code.trim().toUpperCase()));
+    if (!snap.exists()) throw new Error('Código não encontrado');
+    const gid = snap.data().groupId;
+    await updateDoc(doc(db, 'groups', gid), { [`members.${currentUser.uid}`]: memberInfo(currentUser) });
+    await publishAll(gid);
+    await setDoc(doc(db, 'users', currentUser.uid, 'meta', 'perfil'), { groupId: gid }, { merge: true });
+  },
+
+  async leave() {
+    if (!groupId) return;
+    const gid = groupId;
+    await unpublishAll(gid);
+    await updateDoc(doc(db, 'groups', gid), { [`members.${currentUser.uid}`]: deleteField() });
+    await setDoc(doc(db, 'users', currentUser.uid, 'meta', 'perfil'), { groupId: null }, { merge: true });
+  },
+};
+
+// ===== Ciclo de vida =====
 function stopSync() {
-  unsubscribeSessions?.();
-  unsubscribeMeta?.();
-  unsubscribeSessions = unsubscribeMeta = null;
+  for (const k of Object.keys(unsubs)) { unsubs[k]?.(); unsubs[k] = null; }
+  groupId = null;
+  groupData = null;
   window.jjSync = null;
+  window.jjApp.setGroup(null);
 }
 
 onAuthStateChanged(auth, (user) => {
+  currentUser = user;
   renderAuth(user);
+  window.jjApp.setUser(user ? { uid: user.uid, ...memberInfo(user) } : null);
   stopSync();
   if (user) startSync(user);
 });

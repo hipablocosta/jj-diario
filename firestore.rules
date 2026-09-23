@@ -1,0 +1,43 @@
+// Regras do Firestore — cola no console: Firestore Database → Regras → Publicar.
+// (Este arquivo é só referência; o Firestore não lê daqui.)
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() { return request.auth != null; }
+    function isMember(gid) {
+      return signedIn()
+        && get(/databases/$(database)/documents/groups/$(gid)).data.members[request.auth.uid] != null;
+    }
+
+    // Diário privado: só o dono lê e escreve
+    match /users/{uid}/{document=**} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    // Código de convite → id do grupo. Qualquer logado pode consultar (pra entrar).
+    match /codes/{code} {
+      allow read: if signedIn();
+      allow create: if signedIn() && request.resource.data.groupId is string;
+    }
+
+    match /groups/{gid} {
+      // Só membros veem o grupo
+      allow read: if signedIn() && resource.data.members[request.auth.uid] != null;
+      // Criar: o criador já entra como membro
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.members[request.auth.uid] != null;
+      // Entrar/sair: só pode mexer na própria entrada em `members`, e em mais nada
+      allow update: if signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+        && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid]);
+
+      // Cópia pública dos treinos: membros leem tudo, cada um escreve só os seus
+      match /sessions/{sid} {
+        allow read: if isMember(gid);
+        allow create, update: if isMember(gid) && request.resource.data.uid == request.auth.uid;
+        allow delete: if isMember(gid) && resource.data.uid == request.auth.uid;
+      }
+    }
+  }
+}

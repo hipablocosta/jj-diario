@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=7">
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
 <body>
   <header class="topbar">
@@ -23,6 +23,7 @@
       <button class="tab active" data-tab="novo">Novo</button>
       <button class="tab" data-tab="historico">Histórico</button>
       <button class="tab" data-tab="stats">Stats</button>
+      <button class="tab" data-tab="grupo">Grupo</button>
     </nav>
   </header>
 
@@ -123,6 +124,11 @@
       </div>
       <small>Logado, os treinos sincronizam pela sua conta Google. Sem login, ficam só neste navegador — exporte de vez em quando.</small>
     </section>
+
+    <!-- ABA: GRUPO -->
+    <section id="tab-grupo" class="tab-panel">
+      <div id="grupo-conteudo"></div>
+    </section>
   </main>
 
   <!-- Painel de seleção de técnicas -->
@@ -136,8 +142,8 @@
     <button type="button" id="picker-pronto" class="btn-primary">Pronto</button>
   </dialog>
 
-  <script src="catalogo.js?v=7"></script>
-  <script src="app.js?v=7"></script>
-  <script type="module" src="sync.js?v=7"></script>
+  <script src="catalogo.js?v=8"></script>
+  <script src="app.js?v=8"></script>
+  <script type="module" src="sync.js?v=8"></script>
 </body>
 </html>
