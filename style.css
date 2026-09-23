@@ -285,7 +285,7 @@ button, .file-label {
 .grupo-form { display: flex; gap: 8px; margin-top: 10px; }
 .grupo-form input { margin: 0; flex: 1; text-transform: none; }
 .grupo-form input.code { text-transform: uppercase; letter-spacing: 2px; }
-.grupo-form button { flex: none; padding: 12px 16px; }
+.grupo-form button { flex: none; width: auto; margin-top: 0; padding: 12px 20px; }
 .ou { text-align: center; color: var(--muted); font-size: 13px; margin: 6px 0; }
 .membros { list-style: none; padding: 0; margin: 0; }
 .membros li {
