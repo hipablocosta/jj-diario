@@ -30,7 +30,23 @@ body {
   border-bottom: 1px solid var(--surface-2);
   z-index: 10;
 }
-.topbar h1 { margin: 12px 0 8px; font-size: 20px; }
+.topbar-row { display: flex; align-items: center; justify-content: space-between; margin: 12px 0 8px; }
+.topbar h1 { margin: 0; font-size: 20px; }
+
+/* Login */
+.auth { display: flex; align-items: center; gap: 8px; min-height: 32px; }
+.btn-login, .btn-logout {
+  padding: 6px 12px;
+  font-size: 13px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--surface-2);
+}
+.btn-logout { color: var(--muted); }
+.avatar { width: 28px; height: 28px; border-radius: 50%; background: var(--surface-2); }
+.auth-name { font-size: 13px; max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sync-status { width: 8px; height: 8px; border-radius: 50%; background: var(--win); }
+.sync-status.pending { background: #ffb703; }
 
 .tabs { display: flex; gap: 4px; }
 .tab {

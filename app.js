@@ -199,6 +199,7 @@ pickerLista.addEventListener('click', (e) => {
     const name = btn.dataset.new;
     customTechniques.push(name);
     localStorage.setItem(CUSTOM_KEY, JSON.stringify(customTechniques));
+    window.jjSync?.setCustom(customTechniques);
     pickerTarget.pick(name);
     pickerBusca.value = '';
     activeCategory = MINHAS;
@@ -331,6 +332,7 @@ form.addEventListener('submit', (e) => {
   };
   sessions.push(session);
   saveSessions(sessions);
+  window.jjSync?.upsert(session);
 
   form.reset();
   form.date.value = todayISO();
@@ -411,6 +413,7 @@ function renderHistorico() {
       if (!confirm('Excluir este treino?')) return;
       sessions = sessions.filter((s) => s.id !== id);
       saveSessions(sessions);
+      window.jjSync?.remove(id);
       renderHistorico();
     });
   });
@@ -441,6 +444,7 @@ $('#lista-estudar').addEventListener('change', (e) => {
   if (!s) return;
   s.studyDone = true;
   saveSessions(sessions);
+  window.jjSync?.upsert(s);
   // Pequeno atraso pra dar tempo de ver o check antes de sumir da lista
   setTimeout(renderEstudar, 250);
 });
@@ -482,6 +486,28 @@ function renderStats() {
   renderRanking($('#top-parceiros'), countBy(rolls.map((r) => r.partner).filter(Boolean)));
 }
 
+// ===== Ponte com o sync.js =====
+// O sync.js chama isto quando chegam dados do Firestore (deste ou de outro dispositivo)
+function rerender() {
+  const ativa = document.querySelector('.tab.active').dataset.tab;
+  if (ativa === 'historico') renderHistorico();
+  if (ativa === 'stats') renderStats();
+}
+
+window.jjApp = {
+  getSessions: () => sessions,
+  replaceSessions(list) {
+    sessions = list;
+    saveSessions(sessions);
+    rerender();
+  },
+  getCustom: () => customTechniques,
+  replaceCustom(list) {
+    customTechniques = list;
+    localStorage.setItem(CUSTOM_KEY, JSON.stringify(customTechniques));
+  },
+};
+
 // ===== Backup =====
 $('#btn-export').addEventListener('click', () => {
   const blob = new Blob([JSON.stringify(sessions, null, 2)], { type: 'application/json' });
@@ -505,6 +531,7 @@ $('#input-import').addEventListener('change', async (e) => {
     saveSessions(sessions);
     // Reaproveita a migração do formato antigo, se o backup for de antes
     sessions = loadSessions();
+    for (const s of novas) window.jjSync?.upsert(s);
     renderStats();
     alert(`${novas.length} treino(s) importado(s).`);
   } catch (err) {
