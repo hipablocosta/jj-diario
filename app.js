@@ -309,15 +309,52 @@ rollsList.addEventListener('click', (e) => {
   }
 });
 
-// ===== Formulário: salvar =====
+// ===== Formulário: salvar / editar =====
 const form = $('#form-sessao');
-form.date.value = todayISO();
+let editingId = null; // id do treino sendo editado, ou null se é treino novo
+
+function resetForm() {
+  form.reset();
+  form.date.value = todayISO();
+  rolls = [];
+  renderRolls();
+  selectedTechniques = [];
+  renderSelectedTechniques();
+  editingId = null;
+  $('#btn-salvar').textContent = 'Salvar treino';
+  $('#btn-cancelar').hidden = true;
+}
+
+// Carrega um treino existente no formulário (cópias, pra cancelar não afetar o original)
+function loadIntoForm(s) {
+  form.date.value = s.date;
+  form.duration.value = s.duration;
+  form.type.value = s.type;
+  form.worked.value = s.worked || '';
+  form.stuck.value = s.stuck || '';
+  form.study.value = s.study || '';
+  selectedTechniques = [...s.techniques];
+  renderSelectedTechniques();
+  rolls = s.rolls.map((r) => ({ partner: r.partner, wins: [...r.wins], losses: [...r.losses] }));
+  renderRolls();
+  editingId = s.id;
+  $('#btn-salvar').textContent = 'Salvar alterações';
+  $('#btn-cancelar').hidden = false;
+  document.querySelector('[data-tab="novo"]').click();
+  window.scrollTo(0, 0);
+}
+
+resetForm();
+
+$('#btn-cancelar').addEventListener('click', () => {
+  resetForm();
+  document.querySelector('[data-tab="historico"]').click();
+});
 
 form.addEventListener('submit', (e) => {
   e.preventDefault();
   const data = new FormData(form);
-  const session = {
-    id: Date.now(),
+  const campos = {
     date: data.get('date'),
     type: data.get('type'),
     duration: Number(data.get('duration')) || 0,
@@ -328,19 +365,23 @@ form.addEventListener('submit', (e) => {
     worked: data.get('worked').trim(),
     stuck: data.get('stuck').trim(),
     study: data.get('study').trim(),
-    studyDone: false,
   };
-  sessions.push(session);
+
+  let session;
+  if (editingId) {
+    session = sessions.find((s) => s.id === editingId);
+    // Se o "pra estudar" mudou, a pendência volta a ficar em aberto
+    const studyMudou = campos.study !== (session.study || '');
+    Object.assign(session, campos);
+    if (studyMudou) session.studyDone = false;
+  } else {
+    session = { id: Date.now(), ...campos, studyDone: false };
+    sessions.push(session);
+  }
   saveSessions(sessions);
   window.jjSync?.upsert(session);
 
-  form.reset();
-  form.date.value = todayISO();
-  rolls = [];
-  renderRolls();
-  selectedTechniques = [];
-  renderSelectedTechniques();
-
+  resetForm();
   // Vai pro histórico pra mostrar o que acabou de salvar
   document.querySelector('[data-tab="historico"]').click();
 });
@@ -402,22 +443,29 @@ function renderHistorico() {
       ${s.rolls.length ? `<ul class="sessao-rolas">${s.rolls.map(renderRoll).join('')}</ul>` : ''}
       ${renderNotas(s)}
       <div class="sessao-actions">
+        <button type="button" class="btn-edit">Editar</button>
         <button type="button" class="btn-delete">Excluir</button>
       </div>
     </article>
   `).join('');
-
-  lista.querySelectorAll('.btn-delete').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const id = Number(btn.closest('.sessao').dataset.id);
-      if (!confirm('Excluir este treino?')) return;
-      sessions = sessions.filter((s) => s.id !== id);
-      saveSessions(sessions);
-      window.jjSync?.remove(id);
-      renderHistorico();
-    });
-  });
 }
+
+$('#lista-sessoes').addEventListener('click', (e) => {
+  const btn = e.target.closest('button');
+  if (!btn) return;
+  const id = Number(btn.closest('.sessao').dataset.id);
+
+  if (btn.classList.contains('btn-edit')) {
+    const s = sessions.find((x) => x.id === id);
+    if (s) loadIntoForm(s);
+  } else if (btn.classList.contains('btn-delete')) {
+    if (!confirm('Excluir este treino?')) return;
+    sessions = sessions.filter((s) => s.id !== id);
+    saveSessions(sessions);
+    window.jjSync?.remove(id);
+    renderHistorico();
+  }
+});
 
 // ===== Stats: pendências de estudo =====
 function renderEstudar() {

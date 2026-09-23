@@ -274,6 +274,8 @@ button, .file-label {
 .estudar small { color: var(--muted); font-size: 12px; }
 .vazio-inline { color: var(--muted); font-size: 14px; padding: 8px 0; background: none !important; }
 .sessao-actions button { background: none; border: none; color: var(--muted); font-size: 13px; padding: 4px 8px; }
+.sessao-actions .btn-edit { color: var(--text); }
+.btn-cancelar { margin-top: 10px; }
 .vazio { text-align: center; color: var(--muted); padding: 40px 0; }
 
 /* Stats */
