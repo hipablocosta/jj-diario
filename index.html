@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#1a1a1a">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Diário JJ</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="style.css?v=4">
+</head>
+<body>
+  <header class="topbar">
+    <h1>Diário JJ</h1>
+    <nav class="tabs">
+      <button class="tab active" data-tab="novo">Novo</button>
+      <button class="tab" data-tab="historico">Histórico</button>
+      <button class="tab" data-tab="stats">Stats</button>
+    </nav>
+  </header>
+
+  <main>
+    <!-- ABA: NOVO TREINO -->
+    <section id="tab-novo" class="tab-panel active">
+      <form id="form-sessao">
+        <div class="row">
+          <label>
+            Data
+            <input type="date" name="date" required>
+          </label>
+          <label>
+            Duração (min)
+            <input type="number" name="duration" min="0" step="5" value="60" inputmode="numeric">
+          </label>
+        </div>
+
+        <fieldset class="segment">
+          <legend>Tipo</legend>
+          <label><input type="radio" name="type" value="gi" checked><span>Gi</span></label>
+          <label><input type="radio" name="type" value="nogi"><span>No-Gi</span></label>
+        </fieldset>
+
+        <fieldset class="tecnicas">
+          <legend>Técnicas da aula</legend>
+          <div id="tecnicas-selecionadas" class="chips"></div>
+          <button type="button" id="btn-add-tecnica" class="btn-secondary">+ Adicionar técnica</button>
+        </fieldset>
+
+        <fieldset class="rolls">
+          <legend>Rolas</legend>
+          <div id="rolls-list"></div>
+          <button type="button" id="btn-add-roll" class="btn-secondary">+ Adicionar rola</button>
+        </fieldset>
+
+        <label>
+          Funcionou
+          <textarea name="worked" rows="2" placeholder="Ex: raspagem de meia-guarda saiu limpa"></textarea>
+        </label>
+        <label>
+          Travei em
+          <textarea name="stuck" rows="2" placeholder="Ex: não consegui sair do cem quilos"></textarea>
+        </label>
+        <label>
+          Pra estudar
+          <textarea name="study" rows="2" placeholder="Ex: reposição de guarda do cem quilos"></textarea>
+          <small>Vira uma pendência nas Stats até você marcar como resolvida</small>
+        </label>
+
+        <button type="submit" class="btn-primary">Salvar treino</button>
+      </form>
+    </section>
+
+    <!-- ABA: HISTÓRICO -->
+    <section id="tab-historico" class="tab-panel">
+      <input type="search" id="busca" placeholder="Buscar técnica, parceiro, obs..." autocomplete="off">
+      <div id="lista-sessoes"></div>
+    </section>
+
+    <!-- ABA: STATS -->
+    <section id="tab-stats" class="tab-panel">
+      <div class="stat-grid">
+        <div class="stat"><span class="stat-value" id="st-total">0</span><span class="stat-label">treinos</span></div>
+        <div class="stat"><span class="stat-value" id="st-mes">0</span><span class="stat-label">este mês</span></div>
+        <div class="stat"><span class="stat-value" id="st-horas">0</span><span class="stat-label">horas no tatame</span></div>
+        <div class="stat"><span class="stat-value" id="st-rolas">0</span><span class="stat-label">rolas</span></div>
+      </div>
+
+      <h2>Pra estudar</h2>
+      <ul id="lista-estudar" class="estudar"></ul>
+
+      <h2>Finalizações</h2>
+      <div class="bar-row"><span>Finalizei</span><div class="bar"><div id="bar-win" class="bar-fill win"></div></div><span id="n-win">0</span></div>
+      <div class="bar-row"><span>Fui finalizado</span><div class="bar"><div id="bar-loss" class="bar-fill loss"></div></div><span id="n-loss">0</span></div>
+      <div class="bar-row"><span>Rolas sem final.</span><div class="bar"><div id="bar-draw" class="bar-fill draw"></div></div><span id="n-draw">0</span></div>
+
+      <h2>Finalizações que mais acerto</h2>
+      <ol id="top-wins" class="ranking"></ol>
+
+      <h2>Finalizações que mais sofro</h2>
+      <ol id="top-losses" class="ranking"></ol>
+
+      <h2>Técnicas mais vistas em aula</h2>
+      <ol id="top-tecnicas" class="ranking"></ol>
+
+      <h2>Parceiros mais frequentes</h2>
+      <ol id="top-parceiros" class="ranking"></ol>
+
+      <h2>Backup</h2>
+      <div class="row">
+        <button type="button" id="btn-export" class="btn-secondary">Exportar JSON</button>
+        <label class="btn-secondary file-label">
+          Importar JSON
+          <input type="file" id="input-import" accept="application/json" hidden>
+        </label>
+      </div>
+      <small>Os dados ficam só neste navegador. Exporte de vez em quando.</small>
+    </section>
+  </main>
+
+  <!-- Painel de seleção de técnicas -->
+  <dialog id="picker">
+    <div class="picker-head">
+      <input type="search" id="picker-busca" placeholder="Buscar técnica..." autocomplete="off">
+      <button type="button" id="picker-fechar" class="btn-close" aria-label="Fechar">×</button>
+    </div>
+    <div id="picker-categorias" class="cat-tabs"></div>
+    <div id="picker-lista" class="picker-lista"></div>
+    <button type="button" id="picker-pronto" class="btn-primary">Pronto</button>
+  </dialog>
+
+  <script src="catalogo.js?v=4"></script>
+  <script src="app.js?v=4"></script>
+</body>
+</html>
