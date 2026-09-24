@@ -107,12 +107,17 @@ document.querySelectorAll('.tab').forEach((btn) => {
 let currentUser = null; // { uid, name, photo } ou null
 let group = null;       // { id, name, code, members: {uid: {name, photo}}, sessions: [] } ou null
 
+// Nome de um membro (entradas podem vir incompletas do banco)
+function nomeMembro(m) {
+  return (m && m.name) || 'Membro';
+}
+
 // Membros do grupo, menos eu
 function otherMembers() {
   if (!group) return [];
-  return Object.entries(group.members)
+  return Object.entries(group.members || {})
     .filter(([uid]) => uid !== currentUser?.uid)
-    .map(([uid, m]) => ({ uid, ...m }))
+    .map(([uid, m]) => ({ uid, ...m, name: nomeMembro(m) }))
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -281,7 +286,7 @@ function renderMemberChips(r) {
   if (!membros.length) return '';
   return `<div class="member-chips">${membros.map((m) => `
     <button type="button" class="member-chip ${r.partnerUid === m.uid ? 'selected' : ''}" data-action="member" data-uid="${m.uid}" data-name="${m.name}">
-      <img src="${m.photo}" alt="" referrerpolicy="no-referrer">${m.name.split(' ')[0]}
+      <img src="${m.photo || ''}" alt="" referrerpolicy="no-referrer">${primeiroNome(m.name)}
     </button>`).join('')}</div>`;
 }
 
@@ -696,7 +701,7 @@ function pendingConfirmations() {
   const out = [];
   for (const s of group.sessions) {
     if (s.uid === me) continue;
-    for (const r of s.rolls) {
+    for (const r of s.rolls || []) {
       if (r.partnerUid !== me || !r.rid || r.mirrorOf) continue;
       const key = rollKey(s.uid, s.id, r.rid);
       if (jaConfirmadas.has(key) || ignoradas.has(key)) continue;
@@ -779,13 +784,13 @@ const FEED_MAX = 20;
 function renderFeed() {
   const me = currentUser.uid;
   const lista = [...group.sessions]
-    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+    .sort((a, b) => (b.date || '').localeCompare(a.date || '') || b.id - a.id)
     .slice(0, FEED_MAX);
   if (!lista.length) return '<p class="vazio-inline">Ninguém registrou treino ainda.</p>';
 
   return `<ul class="feed">${lista.map((s) => {
     const m = group.members[s.uid] || {};
-    const rolas = s.rolls.filter((r) => !r.mirrorOf);
+    const rolas = (s.rolls || []).filter((r) => !r.mirrorOf);
     const wins = rolas.flatMap((r) => r.wins);
     const losses = rolas.flatMap((r) => r.losses);
     const linha = [
@@ -800,7 +805,7 @@ function renderFeed() {
           <div class="feed-linha">${linha}</div>
           ${wins.length ? `<div class="feed-linha"><span class="r-win">Finalizou ${wins.length}×:</span> ${summarize(wins)}</div>` : ''}
           ${losses.length ? `<div class="feed-linha"><span class="r-loss">Foi finalizado ${losses.length}×:</span> ${summarize(losses)}</div>` : ''}
-          ${s.techniques.length ? `<div class="feed-linha"><span class="feed-aula">Aula:</span> ${s.techniques.join(', ')}</div>` : ''}
+          ${s.techniques?.length ? `<div class="feed-linha"><span class="feed-aula">Aula:</span> ${s.techniques.join(', ')}</div>` : ''}
         </div>
       </li>`;
   }).join('')}</ul>`;
@@ -822,7 +827,17 @@ grupoEl.addEventListener('click', (e) => {
   }
 });
 
+// Se algo quebrar na montagem, mostra o erro na tela em vez de deixar a aba em branco
 function renderGrupo() {
+  try {
+    renderGrupoInner();
+  } catch (err) {
+    console.error('[grupo] erro ao montar:', err);
+    grupoEl.innerHTML = `<p class="vazio">Erro ao montar a aba Grupo:<br><code>${err.message}</code></p>`;
+  }
+}
+
+function renderGrupoInner() {
   if (!currentUser) {
     grupoEl.innerHTML = `<p class="vazio">Entra com o Google (botão no topo) pra criar ou entrar num grupo.</p>`;
     return;
@@ -859,11 +874,11 @@ function renderGrupo() {
 
   const me = currentUser.uid;
   const mesAtual = todayISO().slice(0, 7);
-  const membros = Object.entries(group.members).map(([uid, m]) => ({ uid, ...m }));
+  const membros = Object.entries(group.members || {}).map(([uid, m]) => ({ uid, ...m, name: nomeMembro(m) }));
 
   // Ranking do mês: treinos e minutos por membro
   const ranking = membros.map((m) => {
-    const doMes = group.sessions.filter((s) => s.uid === m.uid && s.date.startsWith(mesAtual));
+    const doMes = group.sessions.filter((s) => s.uid === m.uid && (s.date || '').startsWith(mesAtual));
     return { ...m, treinos: doMes.length, minutos: doMes.reduce((acc, s) => acc + (s.duration || 0), 0) };
   }).sort((a, b) => b.treinos - a.treinos || b.minutos - a.minutos || a.name.localeCompare(b.name));
 
@@ -871,15 +886,15 @@ function renderGrupo() {
   // - Rola confirmada (mirrorOf) é cópia da do parceiro: só conta se a original sumiu.
   // - Rola recusada pelo parceiro ("não foi assim") não conta.
   // - Rola ainda não confirmada conta, mas aparece como "aguardando".
-  const existentes = new Set(group.sessions.flatMap((s) => s.rolls.map((r) => r.rid && rollKey(s.uid, s.id, r.rid))));
-  const confirmadas = existentes.size ? new Set(group.sessions.flatMap((s) => s.rolls.map((r) => r.mirrorOf).filter(Boolean))) : new Set();
+  const existentes = new Set(group.sessions.flatMap((s) => (s.rolls || []).map((r) => r.rid && rollKey(s.uid, s.id, r.rid))));
+  const confirmadas = new Set(group.sessions.flatMap((s) => (s.rolls || []).map((r) => r.mirrorOf).filter(Boolean)));
   const recusadas = refusedKeys();
   const placares = otherMembers().map((m) => {
     const minhas = [];  // finalizações que apliquei nele
     const dele = [];    // finalizações que ele aplicou em mim
     let rolas = 0, aguardando = 0, recusadasN = 0;
     for (const s of group.sessions) {
-      for (const r of s.rolls) {
+      for (const r of s.rolls || []) {
         const minha = s.uid === me && r.partnerUid === m.uid;
         const deleComigo = s.uid === m.uid && r.partnerUid === me;
         if (!minha && !deleComigo) continue;
