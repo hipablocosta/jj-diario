@@ -143,7 +143,8 @@ function startSync(user) {
     setCustom: (list) => setDoc(metaRef, { list }).catch(onWriteError),
     // Recusa fica na minha entrada de membro do grupo (pública pro grupo, sem regra nova)
     refuseRoll: (key) => {
-      if (!groupId) return Promise.resolve();
+      // Só grava se eu sou membro (entrada com nome): nunca cria entrada nova por aqui
+      if (!groupId || !groupData?.members?.[user.uid]?.name) return Promise.resolve();
       return updateDoc(doc(db, 'groups', groupId), { [`members.${user.uid}.refused`]: arrayUnion(key) }).catch(onWriteError);
     },
   };
@@ -283,9 +284,11 @@ window.jjGroup = {
   async leave() {
     if (!groupId) return;
     const gid = groupId;
+    // Primeiro desliga o app do grupo (perfil → null), depois limpa no servidor.
+    // Assim nenhuma reação a "membros mudaram" roda enquanto eu estou saindo.
+    await setDoc(doc(db, 'users', currentUser.uid, 'meta', 'perfil'), { groupId: null }, { merge: true });
     await unpublishAll(gid);
     await updateDoc(doc(db, 'groups', gid), { [`members.${currentUser.uid}`]: deleteField() });
-    await setDoc(doc(db, 'users', currentUser.uid, 'meta', 'perfil'), { groupId: null }, { merge: true });
   },
 };
 

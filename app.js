@@ -685,10 +685,14 @@ function refusedKeys() {
   return new Set([...ignoredRolls, ...Object.values(group.members).flatMap((m) => m.refused || [])]);
 }
 
-// Recusas feitas na versão antiga (perfil privado) sobem pra entrada pública de membro
+// Recusas feitas na versão antiga (perfil privado) sobem pra entrada pública de membro.
+// Só roda se eu sou membro de fato (entrada com nome) — senão, ao sair do grupo, a
+// migração recriava uma entrada só com `refused`, sem nome.
 function syncRefusals() {
   if (!group || !currentUser || !window.jjSync) return;
-  const publicas = new Set(group.members[currentUser.uid]?.refused || []);
+  const minha = group.members?.[currentUser.uid];
+  if (!minha?.name) return;
+  const publicas = new Set(minha.refused || []);
   for (const k of ignoredRolls) if (!publicas.has(k)) window.jjSync.refuseRoll(k);
 }
 
