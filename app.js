@@ -112,12 +112,18 @@ function nomeMembro(m) {
   return (m && m.name) || 'Membro';
 }
 
-// Membros do grupo, menos eu
-function otherMembers() {
+// Membros de verdade: entrada com nome. Sem nome é resíduo (ex: só `refused`) e não aparece.
+function allMembers() {
   if (!group) return [];
   return Object.entries(group.members || {})
-    .filter(([uid]) => uid !== currentUser?.uid)
-    .map(([uid, m]) => ({ uid, ...m, name: nomeMembro(m) }))
+    .filter(([, m]) => m && m.name)
+    .map(([uid, m]) => ({ uid, ...m }));
+}
+
+// Membros do grupo, menos eu
+function otherMembers() {
+  return allMembers()
+    .filter((m) => m.uid !== currentUser?.uid)
     .sort((a, b) => a.name.localeCompare(b.name));
 }
 
@@ -878,7 +884,7 @@ function renderGrupoInner() {
 
   const me = currentUser.uid;
   const mesAtual = todayISO().slice(0, 7);
-  const membros = Object.entries(group.members || {}).map(([uid, m]) => ({ uid, ...m, name: nomeMembro(m) }));
+  const membros = allMembers();
 
   // Ranking do mês: treinos e minutos por membro
   const ranking = membros.map((m) => {
