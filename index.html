@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=19">
+  <link rel="stylesheet" href="style.css?v=21">
 </head>
 <body>
   <header class="topbar">
@@ -89,8 +89,7 @@
     </section>
 
     <!-- ABA: STATS -->
-    <section id="tab-stats" class="tab-panel stats-cols">
-      <div class="stats-col">
+    <section id="tab-stats" class="tab-panel">
       <div class="stat-grid">
         <div class="stat"><span class="stat-value" id="st-total">0</span><span class="stat-label">treinos</span></div>
         <div class="stat"><span class="stat-value" id="st-mes">0</span><span class="stat-label">este mês</span></div>
@@ -98,37 +97,50 @@
         <div class="stat"><span class="stat-value" id="st-rolas">0</span><span class="stat-label">rolas</span></div>
       </div>
 
-      <h2>Pra estudar</h2>
-      <ul id="lista-estudar" class="estudar"></ul>
+      <div class="stats-cols">
+        <div class="stats-col">
+          <div class="card">
+            <h2>Pra estudar</h2>
+            <ul id="lista-estudar" class="estudar"></ul>
+          </div>
+          <div class="card">
+            <h2>Finalizações</h2>
+            <div class="bar-row"><span>Finalizei</span><div class="bar"><div id="bar-win" class="bar-fill win"></div></div><span id="n-win">0</span></div>
+            <div class="bar-row"><span>Fui finalizado</span><div class="bar"><div id="bar-loss" class="bar-fill loss"></div></div><span id="n-loss">0</span></div>
+            <div class="bar-row"><span>Rolas sem final.</span><div class="bar"><div id="bar-draw" class="bar-fill draw"></div></div><span id="n-draw">0</span></div>
+          </div>
+        </div>
 
-      <h2>Finalizações</h2>
-      <div class="bar-row"><span>Finalizei</span><div class="bar"><div id="bar-win" class="bar-fill win"></div></div><span id="n-win">0</span></div>
-      <div class="bar-row"><span>Fui finalizado</span><div class="bar"><div id="bar-loss" class="bar-fill loss"></div></div><span id="n-loss">0</span></div>
-      <div class="bar-row"><span>Rolas sem final.</span><div class="bar"><div id="bar-draw" class="bar-fill draw"></div></div><span id="n-draw">0</span></div>
-
-      <h2>Backup</h2>
-      <div class="row">
-        <button type="button" id="btn-export" class="btn-secondary">Exportar JSON</button>
-        <label class="btn-secondary file-label">
-          Importar JSON
-          <input type="file" id="input-import" accept="application/json" hidden>
-        </label>
+        <div class="stats-col rankings">
+          <div class="card">
+            <h2>Finalizações que mais acerto</h2>
+            <ol id="top-wins" class="ranking"></ol>
+          </div>
+          <div class="card">
+            <h2>Finalizações que mais sofro</h2>
+            <ol id="top-losses" class="ranking"></ol>
+          </div>
+          <div class="card">
+            <h2>Técnicas mais vistas em aula</h2>
+            <ol id="top-tecnicas" class="ranking"></ol>
+          </div>
+          <div class="card">
+            <h2>Parceiros mais frequentes</h2>
+            <ol id="top-parceiros" class="ranking"></ol>
+          </div>
+        </div>
       </div>
-      <small>Logado, os treinos sincronizam pela sua conta Google. Sem login, ficam só neste navegador — exporte de vez em quando.</small>
-      </div>
 
-      <div class="stats-col">
-      <h2>Finalizações que mais acerto</h2>
-      <ol id="top-wins" class="ranking"></ol>
-
-      <h2>Finalizações que mais sofro</h2>
-      <ol id="top-losses" class="ranking"></ol>
-
-      <h2>Técnicas mais vistas em aula</h2>
-      <ol id="top-tecnicas" class="ranking"></ol>
-
-      <h2>Parceiros mais frequentes</h2>
-      <ol id="top-parceiros" class="ranking"></ol>
+      <div class="card backup">
+        <h2>Backup</h2>
+        <div class="row">
+          <button type="button" id="btn-export" class="btn-secondary">Exportar JSON</button>
+          <label class="btn-secondary file-label">
+            Importar JSON
+            <input type="file" id="input-import" accept="application/json" hidden>
+          </label>
+        </div>
+        <small>Logado, os treinos sincronizam pela sua conta Google. Sem login, ficam só neste navegador — exporte de vez em quando.</small>
       </div>
     </section>
 
@@ -168,8 +180,8 @@
     <button type="button" id="picker-pronto" class="btn-primary">Pronto</button>
   </dialog>
 
-  <script src="catalogo.js?v=19"></script>
-  <script src="app.js?v=19"></script>
-  <script type="module" src="sync.js?v=19"></script>
+  <script src="catalogo.js?v=21"></script>
+  <script src="app.js?v=21"></script>
+  <script type="module" src="sync.js?v=21"></script>
 </body>
 </html>

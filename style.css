@@ -493,9 +493,15 @@ button, .file-label {
   .col-vazio { color: var(--surface-2); font-size: 14px; }
   .sessao-body .chips, .sessao-body .sessao-rolas, .sessao-body .notas { margin-top: 0; }
 
-  /* Stats e Grupo: duas colunas */
-  .stats-cols.active { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; }
-  .stats-cols h2:first-child { margin-top: 0; }
+  /* Stats: números em linha; embaixo, pendências+barras à esquerda e rankings em grade 2×2 à direita */
+  #tab-stats .stat-grid { grid-template-columns: repeat(4, 1fr); margin-bottom: 16px; } /* a regra base vem depois no arquivo; o id garante prioridade */
+  .stats-cols { display: grid; grid-template-columns: 1fr 1.2fr; gap: 16px; align-items: start; }
+  .rankings { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+  .rankings .card { margin-bottom: 0; }
+  .backup { margin-top: 4px; }
+  .backup .row { max-width: 480px; }
+
+  /* Grupo: duas colunas */
   .grupo-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; }
   .grupo-col h2:first-child { margin-top: 0; }
   .grupo-col > .grupo-card:first-child + h2 { margin-top: 20px; }
@@ -518,7 +524,11 @@ button, .file-label {
 .vazio { text-align: center; color: var(--muted); padding: 40px 0; }
 
 /* Stats */
-.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px; }
+.card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin-bottom: 12px; }
+.card h2 { margin: 0 0 10px; }
+.card .estudar li { background: var(--surface-2); }
+.card small { display: block; margin-top: 8px; }
+.stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
 .stat { background: var(--surface); border-radius: var(--radius); padding: 14px; text-align: center; }
 .stat-value { display: block; font-size: 28px; font-weight: 700; }
 .stat-label { font-size: 12px; color: var(--muted); }
