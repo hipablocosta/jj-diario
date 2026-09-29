@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=15">
+  <link rel="stylesheet" href="style.css?v=16">
 </head>
 <body>
   <header class="topbar">
@@ -19,17 +19,16 @@
       <h1>Diário JJ</h1>
       <div id="auth" class="auth"></div>
     </div>
-    <nav class="tabs">
-      <button class="tab active" data-tab="novo">Novo</button>
-      <button class="tab" data-tab="historico">Histórico</button>
-      <button class="tab" data-tab="stats">Stats</button>
-      <button class="tab" data-tab="grupo">Grupo</button>
-    </nav>
   </header>
 
   <main>
+    <!-- ABA: INÍCIO -->
+    <section id="tab-inicio" class="tab-panel active">
+      <div id="inicio-conteudo"></div>
+    </section>
+
     <!-- ABA: NOVO TREINO -->
-    <section id="tab-novo" class="tab-panel active">
+    <section id="tab-novo" class="tab-panel">
       <form id="form-sessao">
         <div class="row">
           <label>
@@ -131,6 +130,25 @@
     </section>
   </main>
 
+  <!-- Navegação (barra de baixo) -->
+  <nav class="tabs">
+    <button class="tab active" data-tab="inicio">
+      <svg viewBox="0 0 24 24"><path d="M3 11 12 3l9 8v10h-6v-6H9v6H3z"/></svg>Início
+    </button>
+    <button class="tab" data-tab="historico">
+      <svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.5 5H2l3.5-4L9 9H6.6A6 6 0 1 0 12 6zm-.5 3h1.5v4.6l3 1.8-.8 1.3L11.5 12z"/></svg>Histórico
+    </button>
+    <button class="tab tab-mais" data-tab="novo" aria-label="Registrar treino">
+      <span>+</span>
+    </button>
+    <button class="tab" data-tab="stats">
+      <svg viewBox="0 0 24 24"><path d="M4 20V10h4v10zm6 0V4h4v16zm6 0v-7h4v7z"/></svg>Stats
+    </button>
+    <button class="tab" data-tab="grupo">
+      <svg viewBox="0 0 24 24"><path d="M9 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm7 0a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM2 19c0-3 3-5 7-5s7 2 7 5v1H2zm15 1v-1c0-1.6-.6-3-1.7-4.1 3.2.2 5.7 1.9 5.7 4.1v1z"/></svg>Grupo
+    </button>
+  </nav>
+
   <!-- Painel de seleção de técnicas -->
   <dialog id="picker">
     <div class="picker-head">
@@ -142,8 +160,8 @@
     <button type="button" id="picker-pronto" class="btn-primary">Pronto</button>
   </dialog>
 
-  <script src="catalogo.js?v=15"></script>
-  <script src="app.js?v=15"></script>
-  <script type="module" src="sync.js?v=15"></script>
+  <script src="catalogo.js?v=16"></script>
+  <script src="app.js?v=16"></script>
+  <script type="module" src="sync.js?v=16"></script>
 </body>
 </html>

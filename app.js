@@ -97,11 +97,17 @@ document.querySelectorAll('.tab').forEach((btn) => {
     document.querySelectorAll('.tab-panel').forEach((p) => p.classList.remove('active'));
     btn.classList.add('active');
     $(`#tab-${btn.dataset.tab}`).classList.add('active');
+    if (btn.dataset.tab === 'inicio') renderInicio();
     if (btn.dataset.tab === 'historico') renderHistorico();
     if (btn.dataset.tab === 'stats') renderStats();
     if (btn.dataset.tab === 'grupo') renderGrupo();
+    window.scrollTo(0, 0);
   });
 });
+
+function irPara(tab) {
+  document.querySelector(`[data-tab="${tab}"]`).click();
+}
 
 // ===== Usuário logado e grupo (alimentados pelo sync.js) =====
 let currentUser = null; // { uid, name, photo } ou null
@@ -464,9 +470,10 @@ form.addEventListener('submit', (e) => {
   saveSessions(sessions);
   window.jjSync?.upsert(session);
 
+  const editava = Boolean(editingId);
   resetForm();
-  // Vai pro histórico pra mostrar o que acabou de salvar
-  document.querySelector('[data-tab="historico"]').click();
+  // Treino novo volta pro Início (o check do dia aparece); edição volta pro histórico
+  irPara(editava ? 'historico' : 'inicio');
 });
 
 // ===== Histórico =====
@@ -627,6 +634,7 @@ function renderStats() {
 // O sync.js chama isto quando chegam dados do Firestore (deste ou de outro dispositivo)
 function rerender() {
   const ativa = document.querySelector('.tab.active').dataset.tab;
+  if (ativa === 'inicio') renderInicio();
   if (ativa === 'historico') renderHistorico();
   if (ativa === 'stats') renderStats();
   if (ativa === 'grupo') renderGrupo();
@@ -667,7 +675,7 @@ window.jjApp = {
   },
   setUser(user) {
     currentUser = user;
-    if (document.querySelector('.tab.active').dataset.tab === 'grupo') renderGrupo();
+    rerender();
   },
   setGroup(data) {
     group = data;
@@ -978,6 +986,125 @@ async function acaoGrupo(form, fn) {
     renderGrupo();
   }
 }
+
+// ===== Início =====
+const META_KEY = 'jj-meta-semanal';
+let metaSemanal = Number(localStorage.getItem(META_KEY)) || 3;
+
+// Semana começa na segunda. Retorna os 7 dias (ISO) da semana que contém `iso`.
+function diasDaSemana(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const data = new Date(y, m - 1, d);
+  const dow = (data.getDay() + 6) % 7; // 0 = segunda
+  data.setDate(data.getDate() - dow);
+  return Array.from({ length: 7 }, (_, i) => {
+    const dia = new Date(data);
+    dia.setDate(data.getDate() + i);
+    const pad = (n) => String(n).padStart(2, '0');
+    return `${dia.getFullYear()}-${pad(dia.getMonth() + 1)}-${pad(dia.getDate())}`;
+  });
+}
+
+function treinosNaSemana(dias) {
+  const set = new Set(dias);
+  return sessions.filter((s) => set.has(s.date)).length;
+}
+
+// Semanas seguidas batendo a meta. A semana atual conta se já bateu;
+// se ainda não bateu, a sequência é contada a partir da semana passada.
+function sequenciaSemanas() {
+  let dias = diasDaSemana(todayISO());
+  let streak = 0;
+  if (treinosNaSemana(dias) < metaSemanal) dias = diasDaSemana(dias[0]).map(voltarSemana);
+  while (treinosNaSemana(dias) >= metaSemanal && streak < 520) {
+    streak++;
+    dias = dias.map(voltarSemana);
+  }
+  return streak;
+}
+
+function voltarSemana(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  const data = new Date(y, m - 1, d - 7);
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
+}
+
+function renderInicio() {
+  const hoje = todayISO();
+  const dias = diasDaSemana(hoje);
+  const treinadosSet = new Set(sessions.map((s) => s.date));
+  const feitos = treinosNaSemana(dias);
+  const pct = Math.min(100, Math.round((feitos / metaSemanal) * 100));
+  const streak = sequenciaSemanas();
+  const mesAtual = hoje.slice(0, 7);
+  const doMes = sessions.filter((s) => s.date.startsWith(mesAtual));
+  const minutosMes = doMes.reduce((acc, s) => acc + s.duration, 0);
+  const nomes = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+
+  const frase = feitos >= metaSemanal
+    ? `Meta batida: ${feitos} de ${metaSemanal} treinos nesta semana`
+    : `${feitos} de ${metaSemanal} treinos nesta semana`;
+
+  $('#inicio-conteudo').innerHTML = `
+    <div class="saudacao">
+      <h2>Olá${currentUser ? `, ${primeiroNome(currentUser.name)}` : ''}</h2>
+      <small>${currentUser ? (group ? group.name : 'Sem grupo') : 'Entre com o Google pra sincronizar'}</small>
+    </div>
+
+    <div class="hero">
+      <div class="hero-grid">
+        <div>
+          <div class="hero-label">🔥&nbsp; Sequência</div>
+          <div class="hero-value">${streak} <small>${streak === 1 ? 'semana' : 'semanas'}</small></div>
+        </div>
+        <div>
+          <div class="hero-label">🎯&nbsp; Meta semanal</div>
+          <div class="hero-value meta" id="btn-meta" title="Toque pra mudar a meta">${feitos}<span class="de">/${metaSemanal}</span></div>
+        </div>
+      </div>
+      <div class="progresso">
+        <div class="progresso-head"><span class="hero-label">Progresso da meta</span><span class="pct">${pct}%</span></div>
+        <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
+        <p>${frase}</p>
+      </div>
+      <div class="hero-acoes">
+        <button type="button" class="btn-primary" id="btn-registrar">Registrar treino</button>
+        <button type="button" class="btn-secondary" id="btn-ver-historico">Histórico</button>
+      </div>
+    </div>
+
+    <div class="semana">
+      <div class="semana-dias">
+        ${dias.map((d, i) => `<div class="nome ${d === hoje ? 'hoje' : ''}">${nomes[i]}</div>`).join('')}
+        ${dias.map((d) => {
+          const treinou = treinadosSet.has(d);
+          const cls = ['dia', treinou ? 'treinou' : '', d === hoje ? 'hoje' : ''].join(' ');
+          return `<div class="${cls}">${treinou ? '✓' : Number(d.slice(8))}</div>`;
+        }).join('')}
+      </div>
+      <p>${feitos}/${metaSemanal} treinos nesta semana — ${pct}% da meta</p>
+    </div>
+
+    <div class="inicio-stats">
+      <div class="stat"><span class="stat-label">📅&nbsp; Treinos no mês</span><span class="stat-value">${doMes.length}</span></div>
+      <div class="stat"><span class="stat-label">🕒&nbsp; Horas no mês</span><span class="stat-value">${Math.floor(minutosMes / 60)}h ${minutosMes % 60}m</span></div>
+    </div>
+  `;
+
+  $('#btn-registrar').addEventListener('click', () => irPara('novo'));
+  $('#btn-ver-historico').addEventListener('click', () => irPara('historico'));
+  $('#btn-meta').addEventListener('click', () => {
+    const v = prompt('Quantos treinos por semana é a sua meta?', metaSemanal);
+    const n = Number(v);
+    if (!v || !Number.isInteger(n) || n < 1 || n > 14) return;
+    metaSemanal = n;
+    localStorage.setItem(META_KEY, String(n));
+    renderInicio();
+  });
+}
+
+renderInicio();
 
 // ===== Backup =====
 $('#btn-export').addEventListener('click', () => {

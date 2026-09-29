@@ -10,7 +10,7 @@ HTML, CSS e JavaScript puros. Sem framework, sem build, sem servidor próprio. O
 
 | Arquivo | O que faz |
 |---|---|
-| `index.html` | As quatro abas (Novo, Histórico, Stats, Grupo) e o painel de técnicas |
+| `index.html` | As abas (Início, Novo, Histórico, Stats, Grupo), a barra de navegação de baixo e o painel de técnicas |
 | `style.css` | Visual dark, mobile-first |
 | `app.js` | Toda a lógica do diário: formulário, histórico, stats, grupo. Persiste em `localStorage` |
 | `sync.js` | Login Google, Firestore, grupos. Módulo ES que carrega depois do `app.js` |
@@ -67,6 +67,13 @@ Quando A registra uma rola com B (membro do grupo), B vê "A registrou uma rola 
 - Rola não confirmada ainda conta no placar, marcada como "aguardando".
 
 Se B for registrar por conta própria uma rola com A no mesmo dia, o app pergunta se é a mesma.
+
+### Início
+
+Tela padrão. Semana começa na segunda.
+- **Meta semanal**: quantos treinos por semana (padrão 3; toca no número pra mudar; fica no `localStorage`)
+- **Sequência**: semanas seguidas batendo a meta. A semana atual conta se já bateu; se não, a sequência é contada a partir da semana passada.
+- Faixa SEG–DOM com check nos dias que têm treino registrado.
 
 ## Rodar local
 
