@@ -332,8 +332,12 @@ button, .file-label {
   padding: 14px;
   margin-bottom: 12px;
 }
-.sessao-head { display: flex; justify-content: space-between; align-items: baseline; }
+.sessao-head { display: flex; align-items: center; gap: 10px; }
 .sessao-head strong { font-size: 15px; }
+.sessao-head .sessao-actions { margin: 0 0 0 auto; }
+.col-label { display: none; }
+.sessao-col.vazia { display: none; } /* no celular, coluna vazia some */
+.sessao-col + .sessao-col:not(.vazia) { margin-top: 0; }
 .badge {
   font-size: 12px;
   padding: 2px 8px;
@@ -360,7 +364,7 @@ button, .file-label {
 .notas dt.done { color: var(--muted); text-decoration: line-through; }
 .notas dd { margin: 0 0 4px 82px; color: var(--muted); white-space: pre-wrap; }
 .notas dd:last-child { margin-bottom: 0; }
-.sessao-actions { margin-top: 10px; text-align: right; }
+.sessao-actions { display: flex; gap: 2px; }
 
 /* Grupo */
 .grupo-card { background: var(--surface); border-radius: var(--radius); padding: 14px; margin-bottom: 14px; }
@@ -475,11 +479,19 @@ button, .file-label {
   /* Novo: dados e rolas à esquerda, notas à direita */
   .form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; }
 
-  /* Histórico: duas colunas de cards */
-  #tab-historico.active { display: block; }
-  #lista-sessoes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
-  .sessao { margin-bottom: 0; }
-  #busca { max-width: 520px; }
+  /* Histórico: um card por linha, com Aula · Rolas · Notas em colunas alinhadas */
+  #busca { margin-bottom: 16px; }
+  .sessao { padding: 14px 18px 16px; }
+  .sessao-head { padding-bottom: 10px; border-bottom: 1px solid var(--surface-2); margin-bottom: 12px; }
+  .sessao-body { display: grid; grid-template-columns: 1fr 1.3fr 1.5fr; gap: 20px; align-items: start; }
+  .sessao-col.vazia { display: block; }
+  .col-label {
+    display: block;
+    font-size: 11px; letter-spacing: .06em; text-transform: uppercase; font-weight: 600;
+    color: var(--muted); margin-bottom: 8px;
+  }
+  .col-vazio { color: var(--surface-2); font-size: 14px; }
+  .sessao-body .chips, .sessao-body .sessao-rolas, .sessao-body .notas { margin-top: 0; }
 
   /* Stats e Grupo: duas colunas */
   .stats-cols.active { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; }

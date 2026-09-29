@@ -529,21 +529,32 @@ function renderHistorico() {
     return;
   }
 
-  lista.innerHTML = filtradas.map((s) => `
+  lista.innerHTML = filtradas.map((s) => {
+    const aula = s.techniques.length
+      ? `<div class="chips">${s.techniques.map((t) => `<span class="chip">${t}</span>`).join('')}</div>` : '';
+    const rolas = s.rolls.length
+      ? `<ul class="sessao-rolas">${s.rolls.map((r) => renderRoll(r, s)).join('')}</ul>` : '';
+    const notas = renderNotas(s);
+    const col = (rotulo, html) => html
+      ? `<div class="sessao-col"><span class="col-label">${rotulo}</span>${html}</div>`
+      : `<div class="sessao-col vazia"><span class="col-label">${rotulo}</span><span class="col-vazio">—</span></div>`;
+    return `
     <article class="sessao" data-id="${s.id}">
       <div class="sessao-head">
         <strong>${formatDate(s.date)}</strong>
         <span class="badge ${s.type}">${s.type === 'gi' ? 'Gi' : 'No-Gi'} · ${s.duration}min</span>
+        <div class="sessao-actions">
+          <button type="button" class="btn-edit">Editar</button>
+          <button type="button" class="btn-delete">Excluir</button>
+        </div>
       </div>
-      ${s.techniques.length ? `<div class="chips">${s.techniques.map((t) => `<span class="chip">${t}</span>`).join('')}</div>` : ''}
-      ${s.rolls.length ? `<ul class="sessao-rolas">${s.rolls.map((r) => renderRoll(r, s)).join('')}</ul>` : ''}
-      ${renderNotas(s)}
-      <div class="sessao-actions">
-        <button type="button" class="btn-edit">Editar</button>
-        <button type="button" class="btn-delete">Excluir</button>
+      <div class="sessao-body">
+        ${col('Aula', aula)}
+        ${col('Rolas', rolas)}
+        ${col('Notas', notas)}
       </div>
-    </article>
-  `).join('');
+    </article>`;
+  }).join('');
 }
 
 $('#lista-sessoes').addEventListener('click', (e) => {
