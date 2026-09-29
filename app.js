@@ -929,6 +929,8 @@ function renderGrupoInner() {
   }).filter((p) => p.rolas + p.recusadas > 0).sort((a, b) => b.rolas - a.rolas);
 
   grupoEl.innerHTML = `
+    <div class="grupo-cols">
+    <div class="grupo-col">
     ${renderPendentes()}
     <div class="grupo-card">
       <h3>${group.name}</h3>
@@ -963,10 +965,14 @@ function renderGrupoInner() {
       </div>`).join('')
     : `<p class="vazio-inline">Nenhuma rola com membro do grupo ainda. Ao adicionar uma rola, toca no nome do parceiro pra ligar.</p>`}
 
+    <button type="button" id="btn-sair-grupo" class="btn-secondary btn-sair-grupo">Sair do grupo</button>
+    </div>
+
+    <div class="grupo-col">
     <h2>Últimos treinos</h2>
     ${renderFeed()}
-
-    <button type="button" id="btn-sair-grupo" class="btn-secondary btn-sair-grupo">Sair do grupo</button>
+    </div>
+    </div>
   `;
 
   $('#btn-sair-grupo').addEventListener('click', () => {
@@ -1047,7 +1053,7 @@ function renderInicio() {
     : `${feitos} de ${metaSemanal} treinos nesta semana`;
 
   $('#inicio-conteudo').innerHTML = `
-    <div class="saudacao">
+    <div class="saudacao inicio-full">
       <h2>Olá${currentUser ? `, ${primeiroNome(currentUser.name)}` : ''}</h2>
       <small>${currentUser ? (group ? group.name : 'Sem grupo') : 'Entre com o Google pra sincronizar'}</small>
     </div>
@@ -1086,7 +1092,7 @@ function renderInicio() {
       <p>${feitos}/${metaSemanal} treinos nesta semana — ${pct}% da meta</p>
     </div>
 
-    <div class="inicio-stats">
+    <div class="inicio-stats inicio-full">
       <div class="stat"><span class="stat-label">📅&nbsp; Treinos no mês</span><span class="stat-value">${doMes.length}</span></div>
       <div class="stat"><span class="stat-label">🕒&nbsp; Horas no mês</span><span class="stat-value">${Math.floor(minutosMes / 60)}h ${minutosMes % 60}m</span></div>
     </div>

@@ -90,7 +90,8 @@ body {
   transform: translateY(-14px);
   box-shadow: 0 4px 12px rgba(0,0,0,.4);
 }
-.tab-mais span { position: relative; top: -2px; }
+.tab-mais .mais-icone { position: relative; top: -2px; }
+.tab-mais .mais-rotulo { display: none; }
 .tab-mais.active { background: var(--accent); color: #fff; }
 
 main { padding: 16px 16px calc(90px + env(safe-area-inset-bottom)); max-width: 600px; margin: 0 auto; }
@@ -409,6 +410,86 @@ button, .file-label {
 .recusada { color: var(--loss); font-size: 12px; }
 .dica { display: block; color: var(--muted); font-size: 12px; margin: -4px 0 14px; }
 .tab.badge-dot::after { content: "●"; color: var(--accent); font-size: 8px; margin-left: 4px; vertical-align: top; }
+
+/* ===== Desktop (≥ 900px): barra lateral e duas colunas ===== */
+@media (min-width: 900px) {
+  :root { --sidebar: 220px; }
+
+  .topbar { padding-left: calc(var(--sidebar) + 32px); padding-right: 32px; }
+  .topbar-row { max-width: 1100px; margin: 0 auto; }
+
+  main {
+    margin-left: var(--sidebar);
+    max-width: 1100px;
+    padding: 24px 32px 40px;
+    margin-right: auto;
+  }
+
+  .tabs {
+    top: 0; bottom: 0; right: auto;
+    width: var(--sidebar);
+    max-width: none;
+    margin: 0;
+    padding: 24px 12px;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: stretch;
+    gap: 4px;
+    border-top: none;
+    border-right: 1px solid var(--surface-2);
+  }
+  .tab {
+    flex: 0 0 auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+    padding: 12px 14px;
+    border-radius: var(--radius);
+    font-size: 15px;
+  }
+  .tab.active { background: var(--surface-2); color: var(--text); }
+  .tab.active svg { color: var(--accent); }
+  .tab-mais {
+    width: auto; height: auto;
+    margin: 8px 0 12px;
+    border-radius: var(--radius);
+    transform: none;
+    box-shadow: none;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 12px 14px;
+    order: -1;
+  }
+  .tab-mais .mais-icone { top: 0; font-size: 22px; line-height: 1; }
+  .tab-mais .mais-rotulo { display: inline; }
+
+  /* Início: card e semana lado a lado; saudação e stats ocupam a linha toda */
+  /* saudação em cima; card à esquerda (alto); semana e stats empilhados à direita */
+  #inicio-conteudo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .saudacao { grid-column: 1 / -1; }
+  .hero { grid-column: 1; grid-row: 2 / 4; margin-bottom: 0; }
+  .semana { grid-column: 2; grid-row: 2; margin-bottom: 0; }
+  .inicio-stats { grid-column: 2; grid-row: 3; }
+
+  /* Novo: dados e rolas à esquerda, notas à direita */
+  .form-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; }
+
+  /* Histórico: duas colunas de cards */
+  #tab-historico.active { display: block; }
+  #lista-sessoes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; align-items: start; }
+  .sessao { margin-bottom: 0; }
+  #busca { max-width: 520px; }
+
+  /* Stats e Grupo: duas colunas */
+  .stats-cols.active { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; }
+  .stats-cols h2:first-child { margin-top: 0; }
+  .grupo-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; }
+  .grupo-col h2:first-child { margin-top: 0; }
+  .grupo-col > .grupo-card:first-child + h2 { margin-top: 20px; }
+
+  /* Painel de técnicas centralizado em vez de colado embaixo */
+  #picker { inset: 50% auto auto 50%; transform: translate(-50%, -50%); border-radius: 16px; max-height: 80vh; }
+}
 
 /* Pendências de estudo (Stats) */
 .estudar { list-style: none; padding: 0; margin: 0; }

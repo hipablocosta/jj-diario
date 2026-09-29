@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="style.css?v=17">
 </head>
 <body>
   <header class="topbar">
@@ -29,7 +29,8 @@
 
     <!-- ABA: NOVO TREINO -->
     <section id="tab-novo" class="tab-panel">
-      <form id="form-sessao">
+      <form id="form-sessao" class="form-cols">
+        <div class="form-col">
         <div class="row">
           <label>
             Data
@@ -58,7 +59,9 @@
           <div id="rolls-list"></div>
           <button type="button" id="btn-add-roll" class="btn-secondary">+ Adicionar rola</button>
         </fieldset>
+        </div>
 
+        <div class="form-col">
         <label>
           Funcionou
           <textarea name="worked" rows="2" placeholder="Ex: raspagem de meia-guarda saiu limpa"></textarea>
@@ -75,6 +78,7 @@
 
         <button type="submit" id="btn-salvar" class="btn-primary">Salvar treino</button>
         <button type="button" id="btn-cancelar" class="btn-secondary btn-cancelar" hidden>Cancelar edição</button>
+        </div>
       </form>
     </section>
 
@@ -85,7 +89,8 @@
     </section>
 
     <!-- ABA: STATS -->
-    <section id="tab-stats" class="tab-panel">
+    <section id="tab-stats" class="tab-panel stats-cols">
+      <div class="stats-col">
       <div class="stat-grid">
         <div class="stat"><span class="stat-value" id="st-total">0</span><span class="stat-label">treinos</span></div>
         <div class="stat"><span class="stat-value" id="st-mes">0</span><span class="stat-label">este mês</span></div>
@@ -101,6 +106,18 @@
       <div class="bar-row"><span>Fui finalizado</span><div class="bar"><div id="bar-loss" class="bar-fill loss"></div></div><span id="n-loss">0</span></div>
       <div class="bar-row"><span>Rolas sem final.</span><div class="bar"><div id="bar-draw" class="bar-fill draw"></div></div><span id="n-draw">0</span></div>
 
+      <h2>Backup</h2>
+      <div class="row">
+        <button type="button" id="btn-export" class="btn-secondary">Exportar JSON</button>
+        <label class="btn-secondary file-label">
+          Importar JSON
+          <input type="file" id="input-import" accept="application/json" hidden>
+        </label>
+      </div>
+      <small>Logado, os treinos sincronizam pela sua conta Google. Sem login, ficam só neste navegador — exporte de vez em quando.</small>
+      </div>
+
+      <div class="stats-col">
       <h2>Finalizações que mais acerto</h2>
       <ol id="top-wins" class="ranking"></ol>
 
@@ -112,16 +129,7 @@
 
       <h2>Parceiros mais frequentes</h2>
       <ol id="top-parceiros" class="ranking"></ol>
-
-      <h2>Backup</h2>
-      <div class="row">
-        <button type="button" id="btn-export" class="btn-secondary">Exportar JSON</button>
-        <label class="btn-secondary file-label">
-          Importar JSON
-          <input type="file" id="input-import" accept="application/json" hidden>
-        </label>
       </div>
-      <small>Logado, os treinos sincronizam pela sua conta Google. Sem login, ficam só neste navegador — exporte de vez em quando.</small>
     </section>
 
     <!-- ABA: GRUPO -->
@@ -139,7 +147,7 @@
       <svg viewBox="0 0 24 24"><path d="M12 4a8 8 0 1 1-7.5 5H2l3.5-4L9 9H6.6A6 6 0 1 0 12 6zm-.5 3h1.5v4.6l3 1.8-.8 1.3L11.5 12z"/></svg>Histórico
     </button>
     <button class="tab tab-mais" data-tab="novo" aria-label="Registrar treino">
-      <span>+</span>
+      <span class="mais-icone">+</span><span class="mais-rotulo">Registrar treino</span>
     </button>
     <button class="tab" data-tab="stats">
       <svg viewBox="0 0 24 24"><path d="M4 20V10h4v10zm6 0V4h4v16zm6 0v-7h4v7z"/></svg>Stats
@@ -160,8 +168,8 @@
     <button type="button" id="picker-pronto" class="btn-primary">Pronto</button>
   </dialog>
 
-  <script src="catalogo.js?v=16"></script>
-  <script src="app.js?v=16"></script>
-  <script type="module" src="sync.js?v=16"></script>
+  <script src="catalogo.js?v=17"></script>
+  <script src="app.js?v=17"></script>
+  <script type="module" src="sync.js?v=17"></script>
 </body>
 </html>

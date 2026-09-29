@@ -11,7 +11,7 @@ HTML, CSS e JavaScript puros. Sem framework, sem build, sem servidor próprio. O
 | Arquivo | O que faz |
 |---|---|
 | `index.html` | As abas (Início, Novo, Histórico, Stats, Grupo), a barra de navegação de baixo e o painel de técnicas |
-| `style.css` | Visual dark, mobile-first |
+| `style.css` | Visual dark, mobile-first. A partir de 900px (`@media`), navegação vira barra lateral e as abas ficam em duas colunas |
 | `app.js` | Toda a lógica do diário: formulário, histórico, stats, grupo. Persiste em `localStorage` |
 | `sync.js` | Login Google, Firestore, grupos. Módulo ES que carrega depois do `app.js` |
 | `catalogo.js` | Lista de técnicas por categoria. É só um objeto de strings — edite à vontade |
