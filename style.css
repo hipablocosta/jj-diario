@@ -58,7 +58,7 @@ body {
   align-items: flex-end;
   max-width: 600px;
   margin: 0 auto;
-  padding: 6px 4px calc(6px + env(safe-area-inset-bottom));
+  padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
   background: var(--surface);
   border-top: 1px solid var(--surface-2);
   z-index: 10;
@@ -77,22 +77,32 @@ body {
 }
 .tab svg { width: 24px; height: 24px; fill: currentColor; }
 .tab.active { color: var(--accent); }
+/* O botão ocupa pouca altura na barra; o círculo flutua pra cima a partir dele,
+   com um anel na cor do fundo que o separa visualmente da barra. */
 .tab-mais {
   flex: 0 0 auto;
+  width: 60px; height: 42px;
+  margin: 0 4px;
+  padding: 0;
+  background: none;
+  position: relative;
+}
+.tab-mais .mais-icone {
+  position: absolute;
+  left: 50%; bottom: 4px;
+  transform: translateX(-50%);
   width: 56px; height: 56px;
-  margin: 0 8px -8px;
+  display: flex; align-items: center; justify-content: center;
   border-radius: 50%;
+  border: 4px solid var(--bg);
   background: var(--accent);
   color: #fff;
-  font-size: 32px;
+  font-size: 30px;
   line-height: 1;
-  padding: 0;
-  transform: translateY(-14px);
-  box-shadow: 0 4px 12px rgba(0,0,0,.4);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, .45);
 }
-.tab-mais .mais-icone { position: relative; top: -2px; }
 .tab-mais .mais-rotulo { display: none; }
-.tab-mais.active { background: var(--accent); color: #fff; }
+.tab-mais.active .mais-icone { background: var(--accent); }
 
 main { padding: 16px 16px calc(90px + env(safe-area-inset-bottom)); max-width: 600px; margin: 0 auto; }
 
@@ -454,18 +464,30 @@ button, .file-label {
   }
   .tab.active { background: var(--surface-2); color: var(--text); }
   .tab.active svg { color: var(--accent); }
+  /* No desktop o + vira um botão normal no topo da barra lateral */
   .tab-mais {
     width: auto; height: auto;
     margin: 8px 0 12px;
     border-radius: var(--radius);
-    transform: none;
+    background: var(--accent);
+    color: #fff;
     box-shadow: none;
     font-size: 15px;
     font-weight: 600;
     padding: 12px 14px;
     order: -1;
   }
-  .tab-mais .mais-icone { top: 0; font-size: 22px; line-height: 1; }
+  .tab-mais .mais-icone {
+    position: static;
+    transform: none;
+    width: auto; height: auto;
+    display: inline;
+    border: none;
+    border-radius: 0;
+    background: none;
+    box-shadow: none;
+    font-size: 22px;
+  }
   .tab-mais .mais-rotulo { display: inline; }
 
   /* Início: card e semana lado a lado; saudação e stats ocupam a linha toda */
