@@ -523,10 +523,33 @@ button, .file-label {
   .backup { margin-top: 4px; }
   .backup .row { max-width: 480px; }
 
-  /* Grupo: duas colunas */
-  .grupo-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; align-items: start; }
+  /* Grupo: duas colunas. Participantes e feed têm cada um sua caixa com scroll,
+     pra coluna da esquerda não crescer com o tamanho do grupo. */
+  .grupo-cols { display: grid; grid-template-columns: 1fr 1.1fr; gap: 0 32px; align-items: start; }
   .grupo-col h2:first-child { margin-top: 0; }
   .grupo-col > .grupo-card:first-child + h2 { margin-top: 20px; }
+
+  .membros {
+    max-height: 216px;
+    overflow-y: auto;
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 2px 14px;
+  }
+  .membros li:last-child { border-bottom: none; }
+
+  .feed {
+    max-height: calc(100vh - 180px);
+    overflow-y: auto;
+    padding-right: 6px;
+  }
+
+  .membros::-webkit-scrollbar, .feed::-webkit-scrollbar { width: 8px; }
+  .membros::-webkit-scrollbar-track, .feed::-webkit-scrollbar-track { background: transparent; }
+  .membros::-webkit-scrollbar-thumb, .feed::-webkit-scrollbar-thumb {
+    background: var(--surface-2); border-radius: 4px;
+  }
+  .membros, .feed { scrollbar-width: thin; scrollbar-color: var(--surface-2) transparent; }
 
   /* Painel de técnicas centralizado em vez de colado embaixo */
   #picker { inset: 50% auto auto 50%; transform: translate(-50%, -50%); border-radius: 16px; max-height: 80vh; }
