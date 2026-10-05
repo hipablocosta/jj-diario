@@ -51,7 +51,7 @@ Sem finalização nas duas listas = empate.
 ```
 users/{uid}/sessions/{id}      treino completo — privado
 users/{uid}/meta/tecnicas      técnicas personalizadas
-users/{uid}/meta/perfil        { groupId }
+users/{uid}/meta/perfil        { groupId, metaSemanal }
 groups/{gid}                   { name, code, createdBy, members: { uid: { name, photo, refused: [] } } }
 groups/{gid}/sessions/{id}     cópia PÚBLICA do treino, sem as notas
 codes/{code}                   { groupId } — código de convite
@@ -73,7 +73,7 @@ Se B for registrar por conta própria uma rola com A no mesmo dia, o app pergunt
 Tela padrão. Semana começa na segunda.
 - **Check-in de um toque**: sem treino hoje, o botão é "✓ Treinei hoje" — salva na hora com o tipo e a duração mais comuns dos últimos 10 treinos (padrão Gi/60). Com treino hoje, vira "Completar treino de hoje" (ou "Editar", se já tem detalhes) e abre a sessão no formulário.
 - O formulário também abre com esses padrões. O "+" da navegação sempre abre em branco, pra registrar um segundo treino no mesmo dia.
-- **Meta semanal**: quantos treinos por semana (padrão 3; toca no número pra mudar; fica no `localStorage`)
+- **Meta semanal**: quantos treinos por semana (padrão 3; toca no número pra mudar). Logado, fica no perfil e sincroniza entre aparelhos; sem login, só no `localStorage`.
 - **Sequência**: semanas seguidas batendo a meta. A semana atual conta se já bateu; se não, a sequência é contada a partir da semana passada.
 - Faixa SEG–DOM com check nos dias que têm treino registrado.
 

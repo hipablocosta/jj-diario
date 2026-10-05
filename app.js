@@ -686,6 +686,13 @@ window.jjApp = {
     saveSessions(sessions);
     rerender();
   },
+  getMeta: () => metaSemanal,
+  setMeta(n) {
+    if (n === metaSemanal) return;
+    metaSemanal = n;
+    localStorage.setItem(META_KEY, String(n));
+    rerender();
+  },
   setIgnored(list) {
     ignoredRolls = list;
     syncRefusals();
@@ -1170,6 +1177,7 @@ function renderInicio() {
     if (!v || !Number.isInteger(n) || n < 1 || n > 14) return;
     metaSemanal = n;
     localStorage.setItem(META_KEY, String(n));
+    window.jjSync?.setMeta(n);
     renderInicio();
   });
 }

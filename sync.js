@@ -4,7 +4,8 @@
 // Com login:
 //   users/{uid}/sessions/{id}   — treinos completos (privados)
 //   users/{uid}/meta/tecnicas   — técnicas personalizadas
-//   users/{uid}/meta/perfil     — { groupId } grupo atual (ignoredRolls é legado, migrado pra members.refused)
+//   users/{uid}/meta/perfil     — { groupId, metaSemanal } grupo atual e meta de treinos por semana
+//                                 (ignoredRolls é legado, migrado pra members.refused)
 //   groups/{gid}                — { name, code, createdBy, members: { uid: {name, photo, refused: [chave]} } }
 //                                 refused = rolas registradas por outros comigo que eu não confirmei
 //   groups/{gid}/sessions/{id}  — cópia PÚBLICA do treino (sem as notas), visível pro grupo
@@ -141,6 +142,7 @@ function startSync(user) {
       return deleteDoc(doc(sessionsRef, String(id))).catch(onWriteError);
     },
     setCustom: (list) => setDoc(metaRef, { list }).catch(onWriteError),
+    setMeta: (n) => setDoc(perfilRef, { metaSemanal: n }, { merge: true }).catch(onWriteError),
     // Recusa fica na minha entrada de membro do grupo (pública pro grupo, sem regra nova)
     refuseRoll: (key) => {
       // Só grava se eu sou membro (entrada com nome): nunca cria entrada nova por aqui
@@ -181,6 +183,11 @@ function startSync(user) {
   unsubs.perfil = onSnapshot(perfilRef, (snap) => {
     const data = snap.exists() ? snap.data() : {};
     window.jjApp.setIgnored(data.ignoredRolls || []);
+
+    // Meta semanal: usa a do servidor; se ainda não existe lá, sobe a local
+    if (typeof data.metaSemanal === 'number') window.jjApp.setMeta(data.metaSemanal);
+    else window.jjSync?.setMeta(window.jjApp.getMeta());
+
     const gid = data.groupId || null;
     if (gid !== groupId) watchGroup(gid);
   }, (err) => console.error('[sync] perfil:', err));
