@@ -71,6 +71,8 @@ Se B for registrar por conta própria uma rola com A no mesmo dia, o app pergunt
 ### Início
 
 Tela padrão. Semana começa na segunda.
+- **Check-in de um toque**: sem treino hoje, o botão é "✓ Treinei hoje" — salva na hora com o tipo e a duração do último treino registrado (padrão Gi/60). Com treino hoje, vira "Completar treino de hoje" (ou "Editar", se já tem detalhes) e abre a sessão no formulário.
+- O formulário também abre com tipo e duração do último treino. O "+" da navegação sempre abre em branco, pra registrar um segundo treino no mesmo dia.
 - **Meta semanal**: quantos treinos por semana (padrão 3; toca no número pra mudar; fica no `localStorage`)
 - **Sequência**: semanas seguidas batendo a meta. A semana atual conta se já bateu; se não, a sequência é contada a partir da semana passada.
 - Faixa SEG–DOM com check nos dias que têm treino registrado.
@@ -118,6 +120,7 @@ Plano gratuito: 50 mil leituras e 20 mil gravações por dia. Um treino = uma gr
 - **Recusar é contestar**, não "não quero no meu diário". Por isso tira do placar.
 - **Rola não confirmada conta.** Senão o placar fica vazio enquanto o amigo não abre o app.
 - **Mudar "pra estudar" reabre a pendência.** Virou outra coisa pra estudar.
+- **Marcar presença é separado de detalhar o treino.** Depois do treino, cansado, o custo de preencher a tela inteira faz a pessoa não registrar nada. O check-in leva um toque; técnica, rola e notas são opcionais e podem entrar depois.
 - **O feed mostra o que o treino teve, não com quem.** "Finalizou 2× (Armlock)" sim; "finalizou o Carlos" não — parceiro de fora do grupo não pediu pra aparecer.
 
 ## Backlog

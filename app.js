@@ -383,9 +383,21 @@ rollsList.addEventListener('click', (e) => {
 const form = $('#form-sessao');
 let editingId = null; // id do treino sendo editado, ou null se é treino novo
 
+// Tipo e duração do último treino registrado: viram o padrão do check-in e do formulário,
+// porque quase todo mundo treina sempre do mesmo jeito.
+function padroesTreino() {
+  const ultimo = [...sessions]
+    .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
+    .pop();
+  return { type: ultimo?.type || 'gi', duration: ultimo?.duration || 60 };
+}
+
 function resetForm() {
   form.reset();
   form.date.value = todayISO();
+  const padrao = padroesTreino();
+  form.type.value = padrao.type;
+  form.duration.value = padrao.duration;
   rolls = [];
   renderRolls();
   selectedTechniques = [];
@@ -1047,8 +1059,34 @@ function voltarSemana(iso) {
   return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
 }
 
+function temDetalhes(s) {
+  return Boolean(s.techniques.length || s.rolls.length || s.worked || s.stuck || s.study);
+}
+
+// Check-in de um toque: marca presença com os padrões e deixa o detalhe pra depois
+function checkinHoje() {
+  const padrao = padroesTreino();
+  const session = {
+    id: Date.now(),
+    date: todayISO(),
+    type: padrao.type,
+    duration: padrao.duration,
+    techniques: [],
+    rolls: [],
+    worked: '',
+    stuck: '',
+    study: '',
+    studyDone: false,
+  };
+  sessions.push(session);
+  saveSessions(sessions);
+  window.jjSync?.upsert(session);
+  renderInicio();
+}
+
 function renderInicio() {
   const hoje = todayISO();
+  const treinoHoje = sessions.find((s) => s.date === hoje);
   const dias = diasDaSemana(hoje);
   const treinadosSet = new Set(sessions.map((s) => s.date));
   const feitos = treinosNaSemana(dias);
@@ -1085,10 +1123,18 @@ function renderInicio() {
         <div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>
         <p>${frase}</p>
       </div>
-      <div class="hero-acoes">
-        <button type="button" class="btn-primary" id="btn-registrar">Registrar treino</button>
-        <button type="button" class="btn-secondary" id="btn-ver-historico">Histórico</button>
-      </div>
+      ${treinoHoje ? `
+        <p class="checkin-ok">✓ Treino de hoje registrado · ${treinoHoje.type === 'gi' ? 'Gi' : 'No-Gi'} · ${treinoHoje.duration} min</p>
+        <div class="hero-acoes">
+          <button type="button" class="btn-primary" id="btn-completar">${temDetalhes(treinoHoje) ? 'Editar treino de hoje' : 'Completar treino de hoje'}</button>
+          <button type="button" class="btn-secondary" id="btn-ver-historico">Histórico</button>
+        </div>
+      ` : `
+        <div class="hero-acoes">
+          <button type="button" class="btn-primary" id="btn-checkin">✓ Treinei hoje</button>
+          <button type="button" class="btn-secondary" id="btn-detalhar">Detalhar</button>
+        </div>
+      `}
     </div>
 
     <div class="semana">
@@ -1109,8 +1155,10 @@ function renderInicio() {
     </div>
   `;
 
-  $('#btn-registrar').addEventListener('click', () => irPara('novo'));
-  $('#btn-ver-historico').addEventListener('click', () => irPara('historico'));
+  $('#btn-checkin')?.addEventListener('click', checkinHoje);
+  $('#btn-detalhar')?.addEventListener('click', () => irPara('novo'));
+  $('#btn-completar')?.addEventListener('click', () => loadIntoForm(treinoHoje));
+  $('#btn-ver-historico')?.addEventListener('click', () => irPara('historico'));
   $('#btn-meta').addEventListener('click', () => {
     const v = prompt('Quantos treinos por semana é a sua meta?', metaSemanal);
     const n = Number(v);

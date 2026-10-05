@@ -129,6 +129,7 @@ main { padding: 16px 16px calc(90px + env(safe-area-inset-bottom)); max-width: 6
 .progresso .bar { margin-top: 6px; height: 8px; }
 .progresso .bar-fill { background: var(--accent); }
 .progresso p { margin: 8px 0 0; font-size: 13px; color: var(--muted); }
+.checkin-ok { margin: 14px 0 0; font-size: 13px; color: var(--win); font-weight: 600; }
 .hero-acoes { display: flex; gap: 10px; margin-top: 14px; }
 .hero-acoes button { flex: 1; margin: 0; padding: 12px; font-size: 14px; border-radius: 999px; }
 .semana {
