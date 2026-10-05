@@ -383,13 +383,18 @@ rollsList.addEventListener('click', (e) => {
 const form = $('#form-sessao');
 let editingId = null; // id do treino sendo editado, ou null se é treino novo
 
-// Tipo e duração do último treino registrado: viram o padrão do check-in e do formulário,
-// porque quase todo mundo treina sempre do mesmo jeito.
+// Tipo e duração mais comuns nos últimos treinos: viram o padrão do check-in e do
+// formulário. É a moda, não o último treino — senão um open mat de 2h vira o padrão.
+// Empate fica com o mais recente.
 function padroesTreino() {
-  const ultimo = [...sessions]
-    .sort((a, b) => a.date.localeCompare(b.date) || a.id - b.id)
-    .pop();
-  return { type: ultimo?.type || 'gi', duration: ultimo?.duration || 60 };
+  const recentes = [...sessions]
+    .sort((a, b) => b.date.localeCompare(a.date) || b.id - a.id)
+    .slice(0, 10);
+  const maisComum = (valores, padrao) => countBy(valores)[0]?.[0] ?? padrao;
+  return {
+    type: maisComum(recentes.map((s) => s.type), 'gi'),
+    duration: Number(maisComum(recentes.map((s) => String(s.duration)), '60')),
+  };
 }
 
 function resetForm() {
