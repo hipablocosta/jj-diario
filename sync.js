@@ -4,7 +4,7 @@
 // Com login:
 //   users/{uid}/sessions/{id}   — treinos completos (privados)
 //   users/{uid}/meta/tecnicas   — técnicas personalizadas
-//   users/{uid}/meta/perfil     — { groupId, metaSemanal } grupo atual e meta de treinos por semana
+//   users/{uid}/meta/perfil     — { groupId, metaSemanal, lembrete } grupo, meta semanal e dias/hora do lembrete
 //                                 (ignoredRolls é legado, migrado pra members.refused)
 //   groups/{gid}                — { name, code, createdBy, members: { uid: {name, photo, refused: [chave]} } }
 //                                 refused = rolas registradas por outros comigo que eu não confirmei
@@ -143,6 +143,7 @@ function startSync(user) {
     },
     setCustom: (list) => setDoc(metaRef, { list }).catch(onWriteError),
     setMeta: (n) => setDoc(perfilRef, { metaSemanal: n }, { merge: true }).catch(onWriteError),
+    setLembrete: (v) => setDoc(perfilRef, { lembrete: v }, { merge: true }).catch(onWriteError),
     // Recusa fica na minha entrada de membro do grupo (pública pro grupo, sem regra nova)
     refuseRoll: (key) => {
       // Só grava se eu sou membro (entrada com nome): nunca cria entrada nova por aqui
@@ -187,6 +188,10 @@ function startSync(user) {
     // Meta semanal: usa a do servidor; se ainda não existe lá, sobe a local
     if (typeof data.metaSemanal === 'number') window.jjApp.setMeta(data.metaSemanal);
     else window.jjSync?.setMeta(window.jjApp.getMeta());
+
+    // Lembrete de treino: mesma lógica
+    if (data.lembrete) window.jjApp.setLembrete(data.lembrete);
+    else if (window.jjApp.getLembrete()) window.jjSync?.setLembrete(window.jjApp.getLembrete());
 
     const gid = data.groupId || null;
     if (gid !== groupId) watchGroup(gid);

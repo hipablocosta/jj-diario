@@ -164,7 +164,7 @@ main { padding: 16px 16px calc(90px + env(safe-area-inset-bottom)); max-width: 6
 /* Formulário */
 label { display: block; margin-bottom: 14px; font-size: 14px; color: var(--muted); }
 label small { display: block; margin-top: 4px; font-size: 12px; }
-input[type="text"], input[type="date"], input[type="number"], input[type="search"], textarea, select {
+input[type="text"], input[type="date"], input[type="time"], input[type="number"], input[type="search"], textarea, select {
   display: block;
   width: 100%;
   margin-top: 6px;
@@ -588,3 +588,49 @@ h2 { font-size: 15px; color: var(--muted); margin: 20px 0 10px; font-weight: 600
 .ranking { padding-left: 20px; font-size: 14px; }
 .ranking li { margin-bottom: 4px; }
 .ranking span { color: var(--muted); }
+
+/* Lembrete de treino */
+.lembrete-linha {
+  display: block;
+  width: 100%;
+  margin-top: 10px;
+  padding: 8px;
+  background: none;
+  border: none;
+  border-top: 1px solid var(--surface-2);
+  color: var(--muted);
+  font-size: 13px;
+}
+.lembrete-linha:hover { color: var(--text); }
+
+.dlg {
+  width: calc(100% - 32px);
+  max-width: 380px;
+  padding: 20px;
+  border: none;
+  border-radius: 16px;
+  background: var(--surface);
+  color: var(--text);
+}
+.dlg::backdrop { background: rgba(0, 0, 0, .6); }
+.dlg h3 { margin: 0 0 6px; font-size: 18px; }
+.dlg-sub { margin: 0 0 16px; font-size: 13px; color: var(--muted); }
+.dlg label { margin-bottom: 0; }
+.dlg input[type="time"] { background: var(--bg); }
+.dlg small { display: block; margin-top: 10px; color: var(--muted); font-size: 12px; text-align: center; }
+.dlg-acoes { display: flex; gap: 8px; margin-top: 16px; }
+.dlg-acoes button { margin: 0; padding: 12px 10px; font-size: 14px; }
+.dlg-acoes .btn-primary { flex: 2; }
+.dlg-acoes .btn-secondary { flex: 1; }
+
+.dias-chips { display: flex; gap: 6px; }
+.dia-chip {
+  flex: 1;
+  padding: 10px 0;
+  font-size: 13px;
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--muted);
+  border: 1px solid var(--surface-2);
+}
+.dia-chip.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }

@@ -686,6 +686,13 @@ window.jjApp = {
     saveSessions(sessions);
     rerender();
   },
+  getLembrete: () => lembrete,
+  setLembrete(v) {
+    if (JSON.stringify(v) === JSON.stringify(lembrete)) return;
+    lembrete = v;
+    localStorage.setItem(LEMBRETE_KEY, JSON.stringify(v));
+    rerender();
+  },
   getMeta: () => metaSemanal,
   setMeta(n) {
     if (n === metaSemanal) return;
@@ -1032,6 +1039,29 @@ async function acaoGrupo(form, fn) {
 const META_KEY = 'jj-meta-semanal';
 let metaSemanal = Number(localStorage.getItem(META_KEY)) || 3;
 
+// Lembrete de treino: dias da semana (0 = segunda) + horário. Vira um evento
+// recorrente no calendário do celular. Fica no perfil pra sincronizar entre aparelhos.
+const LEMBRETE_KEY = 'jj-lembrete';
+let lembrete = JSON.parse(localStorage.getItem(LEMBRETE_KEY) || 'null');
+
+const DIAS_ICS = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+const DIAS_CURTO = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+// Índice do dia da semana (0 = segunda) de uma data ISO
+function diaDaSemana(iso) {
+  const [y, m, d] = iso.split('-').map(Number);
+  return (new Date(y, m - 1, d).getDay() + 6) % 7;
+}
+
+// Sugere os dias em que a pessoa mais treina, pra já vir marcado
+function diasSugeridos() {
+  const contagem = Array(7).fill(0);
+  for (const s of sessions) contagem[diaDaSemana(s.date)]++;
+  const max = Math.max(...contagem);
+  if (max < 2) return [];
+  return contagem.map((n, i) => (n >= Math.max(2, max / 2) ? i : -1)).filter((i) => i >= 0);
+}
+
 // Semana começa na segunda. Retorna os 7 dias (ISO) da semana que contém `iso`.
 function diasDaSemana(iso) {
   const [y, m, d] = iso.split('-').map(Number);
@@ -1159,6 +1189,7 @@ function renderInicio() {
         }).join('')}
       </div>
       <p>${feitos}/${metaSemanal} treinos nesta semana — ${pct}% da meta</p>
+      <button type="button" class="lembrete-linha" id="btn-lembrete">🔔 ${textoLembrete()}</button>
     </div>
 
     <div class="inicio-stats inicio-full">
@@ -1171,6 +1202,7 @@ function renderInicio() {
   $('#btn-detalhar')?.addEventListener('click', () => irPara('novo'));
   $('#btn-completar')?.addEventListener('click', () => loadIntoForm(treinoHoje));
   $('#btn-ver-historico')?.addEventListener('click', () => irPara('historico'));
+  $('#btn-lembrete')?.addEventListener('click', abrirLembrete);
   $('#btn-meta').addEventListener('click', () => {
     const v = prompt('Quantos treinos por semana é a sua meta?', metaSemanal);
     const n = Number(v);
@@ -1183,6 +1215,114 @@ function renderInicio() {
 }
 
 renderInicio();
+
+// ===== Lembrete de treino =====
+const lembreteDlg = $('#lembrete-dlg');
+const lembreteDias = $('#lembrete-dias');
+
+function textoLembrete() {
+  if (!lembrete?.dias?.length) return 'Criar lembrete de treino';
+  const dias = lembrete.dias.map((i) => DIAS_CURTO[i]).join(', ');
+  return `Lembrete: ${dias} às ${lembrete.hora}`;
+}
+
+let diasEscolhidos = [];
+
+function renderDiasChips() {
+  lembreteDias.innerHTML = DIAS_CURTO.map((nome, i) => `
+    <button type="button" class="dia-chip ${diasEscolhidos.includes(i) ? 'on' : ''}" data-dia="${i}">${nome}</button>
+  `).join('');
+}
+
+function abrirLembrete() {
+  diasEscolhidos = lembrete?.dias?.length ? [...lembrete.dias] : diasSugeridos();
+  $('#lembrete-hora').value = lembrete?.hora || '18:00';
+  renderDiasChips();
+  lembreteDlg.showModal();
+}
+
+lembreteDias.addEventListener('click', (e) => {
+  const btn = e.target.closest('.dia-chip');
+  if (!btn) return;
+  const i = Number(btn.dataset.dia);
+  diasEscolhidos = diasEscolhidos.includes(i)
+    ? diasEscolhidos.filter((d) => d !== i)
+    : [...diasEscolhidos, i].sort((a, b) => a - b);
+  renderDiasChips();
+});
+
+$('#lembrete-fechar').addEventListener('click', () => lembreteDlg.close());
+lembreteDlg.addEventListener('click', (e) => { if (e.target === lembreteDlg) lembreteDlg.close(); });
+
+$('#lembrete-criar').addEventListener('click', () => {
+  if (!diasEscolhidos.length) {
+    alert('Escolhe pelo menos um dia.');
+    return;
+  }
+  const hora = $('#lembrete-hora').value || '18:00';
+  lembrete = { dias: [...diasEscolhidos], hora };
+  localStorage.setItem(LEMBRETE_KEY, JSON.stringify(lembrete));
+  window.jjSync?.setLembrete(lembrete);
+  baixarICS(gerarICS(lembrete));
+  lembreteDlg.close();
+  renderInicio();
+});
+
+// Próxima data futura que cai num dos dias escolhidos (o evento recorrente começa nela)
+function proximaOcorrencia(dias, hora) {
+  const [h, min] = hora.split(':').map(Number);
+  const agora = new Date();
+  for (let i = 0; i <= 7; i++) {
+    const d = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + i, h, min, 0, 0);
+    if (dias.includes((d.getDay() + 6) % 7) && d > agora) return d;
+  }
+  return new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1, h, min, 0, 0);
+}
+
+// Evento recorrente em "hora flutuante" (sem fuso): 18:00 é 18:00 onde a pessoa estiver,
+// o que evita ter que embutir um bloco VTIMEZONE.
+function gerarICS({ dias, hora }) {
+  const pad = (n) => String(n).padStart(2, '0');
+  const local = (d) => `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}T${pad(d.getHours())}${pad(d.getMinutes())}00`;
+  const inicio = proximaOcorrencia(dias, hora);
+  const fim = new Date(inicio.getTime() + 60 * 60 * 1000);
+  const agora = new Date();
+  const stamp = `${agora.getUTCFullYear()}${pad(agora.getUTCMonth() + 1)}${pad(agora.getUTCDate())}T${pad(agora.getUTCHours())}${pad(agora.getUTCMinutes())}${pad(agora.getUTCSeconds())}Z`;
+
+  return [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Diario JJ//PT-BR//',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    'BEGIN:VEVENT',
+    `UID:treino-${Date.now()}@jj-diario`,
+    `DTSTAMP:${stamp}`,
+    `DTSTART:${local(inicio)}`,
+    `DTEND:${local(fim)}`,
+    `RRULE:FREQ=WEEKLY;BYDAY=${dias.map((i) => DIAS_ICS[i]).join(',')}`,
+    'SUMMARY:Treino JJ',
+    'DESCRIPTION:Hoje é dia de treino. Simbora!',
+    'BEGIN:VALARM',
+    'TRIGGER:PT0S',
+    'ACTION:DISPLAY',
+    'DESCRIPTION:Hoje é dia de treino. Simbora!',
+    'END:VALARM',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ].join('\r\n');
+}
+
+function baixarICS(texto) {
+  const blob = new Blob([texto], { type: 'text/calendar;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'treino-jj.ics';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+}
 
 // ===== Backup =====
 $('#btn-export').addEventListener('click', () => {

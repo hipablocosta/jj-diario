@@ -11,7 +11,7 @@
   <link rel="icon" href="icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.json">
-  <link rel="stylesheet" href="style.css?v=26">
+  <link rel="stylesheet" href="style.css?v=27">
 </head>
 <body>
   <header class="topbar">
@@ -169,6 +169,25 @@
     </button>
   </nav>
 
+  <!-- Lembrete de treino -->
+  <dialog id="lembrete-dlg" class="dlg">
+    <h3>Lembrete de treino</h3>
+    <p class="dlg-sub">Cria um evento que se repete no calendário do seu celular, pra avisar nos dias em que você treina.</p>
+    <fieldset>
+      <legend>Em quais dias você treina?</legend>
+      <div id="lembrete-dias" class="dias-chips"></div>
+    </fieldset>
+    <label>
+      Horário do lembrete
+      <input type="time" id="lembrete-hora" value="18:00">
+    </label>
+    <div class="dlg-acoes">
+      <button type="button" id="lembrete-criar" class="btn-primary">Adicionar ao calendário</button>
+      <button type="button" id="lembrete-fechar" class="btn-secondary">Fechar</button>
+    </div>
+    <small>Vai abrir o app de calendário pra você confirmar.</small>
+  </dialog>
+
   <!-- Painel de seleção de técnicas -->
   <dialog id="picker">
     <div class="picker-head">
@@ -180,8 +199,8 @@
     <button type="button" id="picker-pronto" class="btn-primary">Pronto</button>
   </dialog>
 
-  <script src="catalogo.js?v=26"></script>
-  <script src="app.js?v=26"></script>
-  <script type="module" src="sync.js?v=26"></script>
+  <script src="catalogo.js?v=27"></script>
+  <script src="app.js?v=27"></script>
+  <script type="module" src="sync.js?v=27"></script>
 </body>
 </html>

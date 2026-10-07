@@ -51,7 +51,7 @@ Sem finalização nas duas listas = empate.
 ```
 users/{uid}/sessions/{id}      treino completo — privado
 users/{uid}/meta/tecnicas      técnicas personalizadas
-users/{uid}/meta/perfil        { groupId, metaSemanal }
+users/{uid}/meta/perfil        { groupId, metaSemanal, lembrete }
 groups/{gid}                   { name, code, createdBy, members: { uid: { name, photo, refused: [] } } }
 groups/{gid}/sessions/{id}     cópia PÚBLICA do treino, sem as notas
 codes/{code}                   { groupId } — código de convite
@@ -73,6 +73,7 @@ Se B for registrar por conta própria uma rola com A no mesmo dia, o app pergunt
 Tela padrão. Semana começa na segunda.
 - **Check-in de um toque**: sem treino hoje, o botão é "✓ Treinei hoje" — salva na hora com o tipo e a duração mais comuns dos últimos 10 treinos (padrão Gi/60). Com treino hoje, vira "Completar treino de hoje" (ou "Editar", se já tem detalhes) e abre a sessão no formulário.
 - O formulário também abre com esses padrões. O "+" da navegação sempre abre em branco, pra registrar um segundo treino no mesmo dia.
+- **Lembrete de treino**: a pessoa marca os dias em que treina e um horário, e o app gera um `.ics` — um evento semanal recorrente com alarme, que ela adiciona ao calendário do celular. Os dias já vêm sugeridos a partir do histórico. A escolha fica no perfil (sincroniza), mesmo que o lembrete em si viva no calendário.
 - **Meta semanal**: quantos treinos por semana (padrão 3; toca no número pra mudar). Logado, fica no perfil e sincroniza entre aparelhos; sem login, só no `localStorage`.
 - **Sequência**: semanas seguidas batendo a meta. A semana atual conta se já bateu; se não, a sequência é contada a partir da semana passada.
 - Faixa SEG–DOM com check nos dias que têm treino registrado.
@@ -120,6 +121,7 @@ Plano gratuito: 50 mil leituras e 20 mil gravações por dia. Um treino = uma gr
 - **Recusar é contestar**, não "não quero no meu diário". Por isso tira do placar.
 - **Rola não confirmada conta.** Senão o placar fica vazio enquanto o amigo não abre o app.
 - **Mudar "pra estudar" reabre a pendência.** Virou outra coisa pra estudar.
+- **O lembrete é um evento de calendário, não push.** Push exigiria service worker, Firebase Cloud Messaging e um robô disparando de fora — e no iPhone só funciona pra quem instalou o app na tela de início. O `.ics` funciona pra todo mundo, sem servidor e sem permissão. O preço é ser burro: toca mesmo se a pessoa já treinou naquele dia.
 - **O padrão do check-in é a moda, não o último treino.** Herdar do último fazia um open mat de 2h virar o padrão do dia seguinte.
 - **Marcar presença é separado de detalhar o treino.** Depois do treino, cansado, o custo de preencher a tela inteira faz a pessoa não registrar nada. O check-in leva um toque; técnica, rola e notas são opcionais e podem entrar depois.
 - **O feed mostra o que o treino teve, não com quem.** "Finalizou 2× (Armlock)" sim; "finalizou o Carlos" não — parceiro de fora do grupo não pediu pra aparecer.
